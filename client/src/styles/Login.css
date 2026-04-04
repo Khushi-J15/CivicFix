@@ -1,0 +1,32 @@
+.continue-github .continue-github-icon,
+.continue-google .continue-google-icon, .continue-submit-icon {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}
+
+.continue-github-icon,
+.continue-google-icon,
+.continue-submit-icon {
+  width: 250px;
+  margin: 0 0px;
+}
+
+@media screen and (min-width: 900px) {
+  .continue-submit-icon {
+    width: 400px;
+  }
+  .padding-login{
+    padding-top: 90px;
+    height: calc(100vh - 90px);
+  }
+}
+
+.login-paragraph {
+  margin: -0.5px; 
+}
+
+.login-paragraph-icon {
+  margin-top: 10px;
+}

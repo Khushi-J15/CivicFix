@@ -1,0 +1,3 @@
+TODO 
+Fix the map first time loading error 
+Can also add a filter for explicit protection type thing
