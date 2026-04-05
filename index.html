@@ -1,0 +1,2102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CivicFix | Curating a Better City</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;400;600;700;800;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script id="tailwind-config">
+tailwind.config = {
+  darkMode:"class",
+  theme:{extend:{
+    colors:{
+      "primary":"#00478d","primary-container":"#005eb8","primary-fixed":"#d6e3ff","primary-fixed-dim":"#a9c7ff",
+      "on-primary":"#ffffff","on-primary-fixed":"#001b3d","on-primary-fixed-variant":"#00468c","on-primary-container":"#c8daff",
+      "secondary":"#486176","secondary-fixed":"#cbe6ff","secondary-fixed-dim":"#afcae2","secondary-container":"#cbe6ff",
+      "on-secondary":"#ffffff","on-secondary-fixed":"#001e30","on-secondary-fixed-variant":"#30495d","on-secondary-container":"#4e677c",
+      "tertiary":"#005249","tertiary-container":"#006c60","tertiary-fixed":"#90f4e3","tertiary-fixed-dim":"#73d8c7",
+      "on-tertiary":"#ffffff","on-tertiary-fixed":"#00201c","on-tertiary-fixed-variant":"#005047","on-tertiary-container":"#88ecdb",
+      "error":"#ba1a1a","error-container":"#ffdad6","on-error":"#ffffff","on-error-container":"#93000a",
+      "surface":"#f9f9ff","surface-dim":"#d8dae2","surface-variant":"#e1e2ea",
+      "surface-container-lowest":"#ffffff","surface-container-low":"#f2f3fb","surface-container":"#ecedf6",
+      "surface-container-high":"#e7e8f0","surface-container-highest":"#e1e2ea",
+      "on-surface":"#191c21","on-surface-variant":"#424752","on-background":"#191c21",
+      "outline":"#727783","outline-variant":"#c2c6d4","background":"#f9f9ff",
+      "inverse-surface":"#2e3037","inverse-on-surface":"#eff0f8","inverse-primary":"#a9c7ff","surface-tint":"#005db6",
+      "govt-primary":"#1a3a2a","govt-accent":"#2d6a4f","govt-light":"#d8f3dc","govt-mid":"#95d5b2"
+    },
+    borderRadius:{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","xxl":"1.5rem","full":"9999px"},
+    fontFamily:{"headline":["Manrope"],"body":["Inter"],"label":["Inter"]}
+  }}
+}
+</script>
+<style>
+* { box-sizing: border-box; }
+body { font-family:'Inter',sans-serif; background:#f9f9ff; color:#191c21; }
+.material-symbols-outlined { font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24; font-family:'Material Symbols Outlined'; }
+.fill-icon { font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24; }
+.glass { background:rgba(249,249,255,0.82); backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px); }
+.govt-glass { background:rgba(26,58,42,0.85); backdrop-filter:blur(24px); }
+.btn-gradient { background:linear-gradient(135deg,#00478d 0%,#005eb8 100%); }
+.govt-gradient { background:linear-gradient(135deg,#1a3a2a 0%,#2d6a4f 100%); }
+.text-gradient { background:linear-gradient(135deg,#00478d,#005eb8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.govt-text-gradient { background:linear-gradient(135deg,#1a3a2a,#2d6a4f); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.editorial-shadow { box-shadow:0 12px 32px rgba(25,28,33,0.06); }
+.page { display:none; min-height:100vh; }
+.page.active { display:block; }
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-thumb { background:#c2c6d4; border-radius:10px; }
+#leaflet-main-map,#leaflet-feed-map,#leaflet-admin-map { width:100%; height:100%; }
+.leaflet-container { background:#e8edf4; font-family:'Inter',sans-serif; }
+@keyframes pulseRing { 0%{transform:scale(1);opacity:.6} 100%{transform:scale(2.5);opacity:0} }
+.tab-btn.active { background:#005eb8; color:#fff; }
+.govt-tab-btn.active { background:#2d6a4f; color:#fff; }
+.tab-btn,.govt-tab-btn { transition:all .2s; }
+.status-badge { display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:999px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em; }
+.status-reported { background:#ffdad6; color:#93000a; }
+.status-verified { background:#cbe6ff; color:#30495d; }
+.status-inprogress { background:#fff3cd; color:#6b4a00; }
+.status-resolved { background:#90f4e3; color:#005047; }
+.timeline-line { position:absolute;top:20px;left:50%;width:calc(100% - 40px);height:2px;background:#e1e2ea;transform:translateX(-50%);z-index:0; }
+.fade-in { animation:fadeIn .35s ease; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+.card-hover { transition:box-shadow .25s,transform .25s; }
+.card-hover:hover { box-shadow:0 16px 40px rgba(25,28,33,.1);transform:translateY(-2px); }
+.nav-link { transition:all .15s; }
+.nav-link.active { background:white;color:#1d4ed8;box-shadow:0 2px 8px rgba(0,0,0,.06); }
+.govt-nav-link.active { background:rgba(45,106,79,.15);color:#1a3a2a;font-weight:700; }
+select,input,textarea { outline:none; }
+.leaflet-popup-content-wrapper { border-radius:16px !important;box-shadow:0 12px 32px rgba(0,0,0,.12) !important;border:none !important; }
+.leaflet-popup-tip { display:none; }
+
+/* ── Profile Sidebar ── */
+#profile-sidebar {
+  position:fixed;top:0;right:-420px;width:min(420px,100vw);height:100vh;
+  background:#fff;z-index:900;transition:right .35s cubic-bezier(.4,0,.2,1);
+  box-shadow:-24px 0 64px rgba(25,28,33,.12);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+#profile-sidebar.open { right:0; }
+#profile-overlay { position:fixed;inset:0;background:rgba(25,28,33,.4);backdrop-filter:blur(4px);z-index:899;opacity:0;pointer-events:none;transition:opacity .3s; }
+#profile-overlay.show { opacity:1;pointer-events:auto; }
+
+/* ── Auth Modal ── */
+#auth-modal { position:fixed;inset:0;background:rgba(25,28,33,.55);backdrop-filter:blur(6px);z-index:1100;display:flex;align-items:center;justify-content:center;padding:16px; }
+#auth-modal.hidden { display:none; }
+.auth-box { background:#fff;border-radius:28px;padding:36px;max-width:460px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.15);max-height:90vh;overflow-y:auto; }
+
+/* ── Complaints urgency ── */
+.complaint-high { border-left:4px solid #ba1a1a; }
+.complaint-medium { border-left:4px solid #e8a400; }
+.complaint-low { border-left:4px solid #005249; }
+
+/* ── Resolve post upload zone ── */
+.upload-zone { border:2px dashed rgba(194,198,212,.5);border-radius:20px;cursor:pointer;transition:all .2s; }
+.upload-zone:hover { border-color:#2d6a4f;background:#d8f3dc22; }
+
+/* ── Govt header tint ── */
+.govt-header { border-bottom:2px solid rgba(45,106,79,.2) !important; }
+.govt-badge { background:linear-gradient(135deg,#1a3a2a,#2d6a4f);color:#d8f3dc;font-size:10px;font-weight:700;padding:3px 10px;border-radius:999px;letter-spacing:.08em;text-transform:uppercase; }
+
+/* ── Point chip ── */
+.point-chip { background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-weight:800;font-family:'Manrope',sans-serif; }
+
+/* ── Notification dot pulse ── */
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+.blink { animation:blink 1.5s infinite; }
+
+/* ── Tab radio pill ── */
+.role-pill { cursor:pointer;transition:all .2s; }
+.role-pill.selected { box-shadow:0 4px 16px rgba(0,0,0,.1); }
+</style>
+</head>
+<body class="bg-surface">
+
+<!-- ========== GLOBAL HEADER ========== -->
+<header id="global-header" class="fixed top-0 w-full glass z-50 shadow-sm" style="border-bottom:1px solid rgba(194,198,212,.2)">
+  <div class="flex justify-between items-center px-4 md:px-6 py-3 max-w-screen-2xl mx-auto">
+    <div class="flex items-center gap-6">
+      <button onclick="navigate('landing')" class="text-xl font-black tracking-tight font-headline cursor-pointer select-none" id="brand-title">CivicFix</button>
+      <nav class="hidden md:flex items-center gap-1" id="desktop-nav">
+        <button onclick="navigate('feed')" id="nav-feed" class="nav-link px-3 py-2 rounded-lg text-slate-600 font-medium text-sm">Feed</button>
+        <button onclick="navigate('map')" id="nav-map" class="nav-link px-3 py-2 rounded-lg text-slate-600 font-medium text-sm">Map</button>
+        <!-- Citizen-only -->
+        <button onclick="navigate('create')" id="nav-create" class="nav-link px-3 py-2 rounded-lg text-slate-600 font-medium text-sm citizen-only hidden">Report</button>
+        <!-- Govt-only -->
+        <button onclick="navigate('complaints')" id="nav-complaints" class="nav-link px-3 py-2 rounded-lg text-slate-600 font-medium text-sm govt-only hidden">Complaints</button>
+        <button onclick="navigate('govt-post')" id="nav-govt-post" class="nav-link px-3 py-2 rounded-lg text-slate-600 font-medium text-sm govt-only hidden">Post Update</button>
+        <!-- Admin only -->
+        <button onclick="navigate('admin')" id="nav-admin" class="nav-link px-3 py-2 rounded-lg text-slate-600 font-medium text-sm admin-only hidden">Admin</button>
+      </nav>
+    </div>
+    <div class="flex items-center gap-2">
+      <span id="user-role-badge" class="hidden"></span>
+      <button class="p-2 rounded-full hover:bg-slate-100 text-slate-500 relative" onclick="showNotifications()">
+        <span class="material-symbols-outlined text-xl">notifications</span>
+        <span id="notif-dot" class="absolute top-1 right-1 w-2 h-2 bg-error rounded-full blink"></span>
+      </button>
+      <!-- Avatar — opens profile sidebar -->
+      <div id="user-avatar" class="w-9 h-9 rounded-full btn-gradient flex items-center justify-center text-white font-bold text-sm cursor-pointer select-none" onclick="openProfile()">
+        <span class="material-symbols-outlined text-lg">person</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ========== MOBILE BOTTOM NAV ========== -->
+<nav id="bottom-nav" class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 pb-5 pt-2 glass rounded-t-3xl shadow-lg" style="border-top:1px solid rgba(194,198,212,.2)">
+  <button onclick="navigate('feed')" class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl text-slate-500" id="mob-feed">
+    <span class="material-symbols-outlined text-2xl">dynamic_feed</span>
+    <span class="text-[10px] font-semibold uppercase tracking-wider">Feed</span>
+  </button>
+  <button onclick="navigate('map')" class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl text-slate-500" id="mob-map">
+    <span class="material-symbols-outlined text-2xl">map</span>
+    <span class="text-[10px] font-semibold uppercase tracking-wider">Map</span>
+  </button>
+  <button onclick="navigate('create')" class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl text-slate-500 citizen-only" id="mob-create">
+    <span class="material-symbols-outlined text-2xl" style="font-variation-settings:'FILL' 1">add_circle</span>
+    <span class="text-[10px] font-semibold uppercase tracking-wider">Report</span>
+  </button>
+  <button onclick="navigate('complaints')" class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl text-slate-500 govt-only hidden" id="mob-complaints">
+    <span class="material-symbols-outlined text-2xl">assignment</span>
+    <span class="text-[10px] font-semibold uppercase tracking-wider">Cases</span>
+  </button>
+  <button onclick="navigate('govt-post')" class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl text-slate-500 govt-only hidden" id="mob-govt-post">
+    <span class="material-symbols-outlined text-2xl">post_add</span>
+    <span class="text-[10px] font-semibold uppercase tracking-wider">Update</span>
+  </button>
+  <button onclick="openProfile()" class="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl text-slate-500" id="mob-profile">
+    <span class="material-symbols-outlined text-2xl">person</span>
+    <span class="text-[10px] font-semibold uppercase tracking-wider">Profile</span>
+  </button>
+</nav>
+
+<!-- ==================== AUTH MODAL ==================== -->
+<div id="auth-modal">
+  <div class="auth-box">
+    <!-- Role switcher tabs -->
+    <div class="flex gap-3 mb-6 p-1 bg-surface-container-low rounded-2xl">
+      <button onclick="switchAuthRole('citizen')" id="auth-tab-citizen"
+        class="role-pill selected flex-1 py-3 rounded-xl font-headline font-bold text-sm flex items-center justify-center gap-2 bg-white text-primary shadow-sm">
+        <span class="material-symbols-outlined text-lg">person</span> Citizen
+      </button>
+      <button onclick="switchAuthRole('govt')" id="auth-tab-govt"
+        class="role-pill flex-1 py-3 rounded-xl font-headline font-bold text-sm flex items-center justify-center gap-2 text-slate-500">
+        <span class="material-symbols-outlined text-lg">account_balance</span> Govt. Official
+      </button>
+    </div>
+
+    <!-- CITIZEN FORM -->
+    <div id="citizen-form">
+      <div class="mb-6">
+        <h2 class="font-headline font-extrabold text-2xl text-gradient mb-1">Welcome to CivicFix</h2>
+        <p class="text-sm text-on-surface-variant">Report issues. React. Make your city better.</p>
+      </div>
+      <div class="space-y-3">
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-bold uppercase tracking-widest text-slate-400">Your Name</label>
+          <div class="flex items-center gap-3 bg-surface-container-low rounded-xl px-4 py-3">
+            <span class="material-symbols-outlined text-outline text-lg">person</span>
+            <input id="c-name" type="text" class="flex-1 bg-transparent text-sm font-medium text-on-surface placeholder:text-outline/50" placeholder="Enter your name" onkeydown="if(event.key==='Enter')doLogin()"/>
+          </div>
+        </div>
+      </div>
+      <button onclick="doLogin()" class="mt-6 w-full btn-gradient text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg">
+        Get Started <span class="material-symbols-outlined">arrow_forward</span>
+      </button>
+      <p class="text-center text-xs text-outline mt-4">By joining, you agree to our <a class="text-primary underline" href="#">Community Guidelines</a></p>
+    </div>
+
+    <!-- GOVT FORM -->
+    <div id="govt-form" class="hidden">
+      <div class="mb-6">
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-3" style="background:#d8f3dc">
+          <span class="material-symbols-outlined text-base" style="color:#1a3a2a">verified_user</span>
+          <span class="text-xs font-bold uppercase tracking-wider" style="color:#1a3a2a">Official Portal</span>
+        </div>
+        <h2 class="font-headline font-extrabold text-2xl govt-text-gradient mb-1">Government Login</h2>
+        <p class="text-sm text-on-surface-variant">For authorized Nagar Palika & Central Govt. officials.</p>
+      </div>
+      <div class="space-y-3">
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-bold uppercase tracking-widest text-slate-400">Official Name</label>
+          <div class="flex items-center gap-3 bg-surface-container-low rounded-xl px-4 py-3">
+            <span class="material-symbols-outlined text-outline text-lg">badge</span>
+            <input id="g-name" type="text" class="flex-1 bg-transparent text-sm font-medium placeholder:text-outline/50" placeholder="Your full name"/>
+          </div>
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-bold uppercase tracking-widest text-slate-400">Department</label>
+          <div class="relative">
+            <select id="g-dept" class="w-full bg-surface-container-low rounded-xl px-4 py-3 text-sm font-medium" style="border:none;appearance:none">
+              <option value="">Select department…</option>
+              <optgroup label="Nagar Palika (Municipal)">
+                <option value="Nagar Palika - Roads">Nagar Palika – Roads & Infrastructure</option>
+                <option value="Nagar Palika - Sanitation">Nagar Palika – Sanitation & Waste</option>
+                <option value="Nagar Palika - Water">Nagar Palika – Water Supply</option>
+                <option value="Nagar Palika - Lighting">Nagar Palika – Street Lighting</option>
+                <option value="Nagar Palika - General">Nagar Palika – General Services</option>
+              </optgroup>
+              <optgroup label="State Government">
+                <option value="State - PWD">State – Public Works Dept (PWD)</option>
+                <option value="State - Health">State – Health & Sanitation</option>
+                <option value="State - Urban Dev">State – Urban Development</option>
+              </optgroup>
+              <optgroup label="Central Government">
+                <option value="Central - CPWD">Central – CPWD</option>
+                <option value="Central - MoUD">Central – Ministry of Urban Dev.</option>
+                <option value="Central - NHAI">Central – NHAI</option>
+              </optgroup>
+            </select>
+            <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">expand_more</span>
+          </div>
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-bold uppercase tracking-widest text-slate-400">Jurisdiction / Area</label>
+          <div class="flex items-center gap-3 bg-surface-container-low rounded-xl px-4 py-3">
+            <span class="material-symbols-outlined text-outline text-lg">location_city</span>
+            <input id="g-area" type="text" class="flex-1 bg-transparent text-sm font-medium placeholder:text-outline/50" placeholder="e.g. Bhopal, Ward 12"/>
+          </div>
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-bold uppercase tracking-widest text-slate-400">Employee ID</label>
+          <div class="flex items-center gap-3 bg-surface-container-low rounded-xl px-4 py-3">
+            <span class="material-symbols-outlined text-outline text-lg">tag</span>
+            <input id="g-empid" type="text" class="flex-1 bg-transparent text-sm font-medium placeholder:text-outline/50" placeholder="EMP-XXXXX"/>
+          </div>
+        </div>
+      </div>
+      <button onclick="doGovtLogin()" class="mt-6 w-full govt-gradient text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg">
+        <span class="material-symbols-outlined">verified_user</span> Sign In as Official
+      </button>
+      <p class="text-center text-xs text-outline mt-3">Access is logged and audited per RTI guidelines.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== PROFILE SIDEBAR ==================== -->
+<div id="profile-overlay" onclick="closeProfile()"></div>
+<aside id="profile-sidebar">
+  <!-- Header -->
+  <div id="profile-header" class="flex-shrink-0 p-6 pt-8 relative" style="background:linear-gradient(135deg,#00478d,#005eb8)">
+    <button onclick="closeProfile()" class="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center" style="background:rgba(255,255,255,.15)">
+      <span class="material-symbols-outlined text-white text-lg">close</span>
+    </button>
+    <div class="flex items-end gap-4">
+      <div id="profile-avatar-big" class="w-16 h-16 rounded-2xl btn-gradient flex items-center justify-center text-white text-2xl font-black font-headline shadow-lg border-2 border-white/30">U</div>
+      <div class="flex-1 pb-1">
+        <h2 id="profile-name" class="font-headline font-extrabold text-xl text-white leading-tight"></h2>
+        <p id="profile-role-label" class="text-xs text-white/70 font-semibold mt-0.5"></p>
+        <p id="profile-dept-label" class="text-xs text-white/60 mt-0.5"></p>
+      </div>
+    </div>
+    <!-- Points row -->
+    <div class="mt-4 flex items-center gap-3">
+      <div class="flex-1 bg-white/10 rounded-xl px-4 py-2.5 flex items-center gap-2">
+        <span class="material-symbols-outlined text-yellow-300 text-lg fill-icon" style="font-variation-settings:'FILL' 1">star</span>
+        <div>
+          <div id="profile-points" class="font-headline font-black text-xl text-white"></div>
+          <div class="text-xs text-white/60">Civic Points</div>
+        </div>
+      </div>
+      <div class="flex-1 bg-white/10 rounded-xl px-4 py-2.5 flex items-center gap-2">
+        <span class="material-symbols-outlined text-green-300 text-lg fill-icon" style="font-variation-settings:'FILL' 1">task_alt</span>
+        <div>
+          <div id="profile-resolved-count" class="font-headline font-black text-xl text-white">0</div>
+          <div class="text-xs text-white/60">Resolved</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="flex-1 overflow-y-auto">
+    <!-- Stats row -->
+    <div class="grid grid-cols-3 gap-0" style="border-bottom:1px solid rgba(194,198,212,.2)">
+      <div class="p-4 text-center" style="border-right:1px solid rgba(194,198,212,.2)">
+        <div id="profile-posts-count" class="font-headline font-black text-2xl text-primary">0</div>
+        <div class="text-xs text-outline font-semibold mt-0.5">Posts</div>
+      </div>
+      <div class="p-4 text-center" style="border-right:1px solid rgba(194,198,212,.2)">
+        <div id="profile-reactions-count" class="font-headline font-black text-2xl text-secondary">0</div>
+        <div class="text-xs text-outline font-semibold mt-0.5">Reactions</div>
+      </div>
+      <div class="p-4 text-center">
+        <div id="profile-rank" class="font-headline font-black text-2xl text-tertiary"></div>
+        <div class="text-xs text-outline font-semibold mt-0.5">Rank</div>
+      </div>
+    </div>
+
+    <!-- History tabs -->
+    <div class="flex gap-0 sticky top-0 bg-white z-10" style="border-bottom:1px solid rgba(194,198,212,.2)">
+      <button onclick="switchProfileTab('posts')" id="ptab-posts" class="flex-1 py-3 text-sm font-bold text-primary" style="border-bottom:2px solid #00478d">My Posts</button>
+      <button onclick="switchProfileTab('reactions')" id="ptab-reactions" class="flex-1 py-3 text-sm font-medium text-outline" style="border-bottom:2px solid transparent">Reactions</button>
+    </div>
+
+    <div id="profile-posts-list" class="p-4 space-y-3"></div>
+    <div id="profile-reactions-list" class="p-4 space-y-3 hidden"></div>
+  </div>
+
+  <!-- Footer actions -->
+  <div class="flex-shrink-0 p-4 space-y-2" style="border-top:1px solid rgba(194,198,212,.2)">
+    <button onclick="closeProfile();navigate('create')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-surface-container-low transition-colors text-sm font-semibold text-on-surface citizen-only">
+      <span class="material-symbols-outlined text-primary text-lg">add_circle</span> Report New Issue
+    </button>
+    <button onclick="doLogout()" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-error-container/50 transition-colors text-sm font-semibold text-error">
+      <span class="material-symbols-outlined text-lg">logout</span> Sign Out
+    </button>
+  </div>
+</aside>
+
+<!-- ==================== PAGE: LANDING ==================== -->
+<div id="page-landing" class="page active pt-16">
+  <main>
+    <section class="relative px-6 py-16 md:py-28 max-w-7xl mx-auto">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+        <div class="lg:col-span-7 flex flex-col gap-8">
+          <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary-fixed text-on-secondary-fixed w-fit text-xs font-bold uppercase tracking-widest">
+            <span class="material-symbols-outlined text-base">auto_awesome</span> The Urban Curator
+          </div>
+          <h1 class="font-headline font-extrabold text-5xl md:text-7xl tracking-tight leading-tight text-on-background">
+            Report local issues.<br/>
+            <span class="text-gradient">Improve your city.</span><br/>
+            Build community.
+          </h1>
+          <p class="text-lg text-on-surface-variant max-w-xl leading-relaxed">Join your neighbors in transforming urban friction into community progress.</p>
+          <div class="flex flex-col sm:flex-row gap-3">
+            <button onclick="openAuthModal('citizen')" class="btn-gradient text-white font-bold px-8 py-4 rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg">
+              <span class="material-symbols-outlined">person</span> Join as Citizen
+            </button>
+            <button onclick="openAuthModal('govt')" class="font-bold px-8 py-4 rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition-all border-2" style="border-color:#1a3a2a;color:#1a3a2a">
+              <span class="material-symbols-outlined">account_balance</span> Govt. Official Login
+            </button>
+          </div>
+          <div class="flex items-center gap-4 pt-2">
+            <div class="flex -space-x-3">
+              <div class="w-9 h-9 rounded-full border-2 border-white btn-gradient flex items-center justify-center text-white text-xs font-bold">M</div>
+              <div class="w-9 h-9 rounded-full border-2 border-white bg-tertiary flex items-center justify-center text-white text-xs font-bold">S</div>
+              <div class="w-9 h-9 rounded-full border-2 border-white bg-secondary flex items-center justify-center text-white text-xs font-bold">A</div>
+            </div>
+            <p class="text-sm font-medium text-on-surface-variant"><span class="font-bold text-on-surface">1,200+</span> citizens reporting today</p>
+          </div>
+        </div>
+        <div class="lg:col-span-5 relative">
+          <div class="absolute -top-12 -right-12 w-64 h-64 bg-primary-fixed/30 blur-3xl rounded-full -z-10"></div>
+          <div class="bg-surface-container-low rounded-[2.5rem] p-4 editorial-shadow overflow-hidden relative" style="border:1px solid rgba(194,198,212,.3)">
+            <div class="rounded-[2rem] overflow-hidden aspect-[4/5] bg-surface-container relative" style="background:linear-gradient(135deg,#e8edf4,#d6e3ff);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;">
+              <span class="material-symbols-outlined text-5xl" style="color:rgba(0,71,141,.3)">map</span>
+              <p class="text-sm font-semibold" style="color:rgba(0,71,141,.5)">Live City Map</p>
+              <div class="absolute top-5 right-5 glass px-3 py-1.5 rounded-full flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-tertiary blink"></span>
+                <span class="text-xs font-bold uppercase tracking-wider">Live</span>
+              </div>
+              <div class="absolute bottom-5 left-4 right-4 glass p-4 rounded-2xl" style="border:1px solid rgba(255,255,255,.4)">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="status-badge status-resolved">Fixed</span>
+                  <span class="text-xs text-slate-500">2m ago</span>
+                </div>
+                <h3 class="font-headline font-bold text-base mb-1">Damaged Bike Path</h3>
+                <p class="text-sm text-on-surface-variant mb-2">Resurfaced at 4th & Pike St</p>
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-primary text-base" style="font-variation-settings:'FILL' 1">thumb_up</span>
+                  <span class="text-xs font-bold text-primary">24 Thanks</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- How it works -->
+    <section class="bg-surface-container-low py-20">
+      <div class="max-w-7xl mx-auto px-6">
+        <div class="text-center mb-14">
+          <h2 class="font-headline font-extrabold text-4xl md:text-5xl tracking-tight mb-3">How it works</h2>
+          <p class="text-on-surface-variant text-lg max-w-xl mx-auto">Turning civic engagement into a seamless experience.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div class="bg-surface-container-lowest p-8 rounded-3xl editorial-shadow hover:shadow-xl transition-all" style="border:1px solid rgba(194,198,212,.1)">
+            <div class="w-14 h-14 bg-primary-fixed rounded-2xl flex items-center justify-center mb-6"><span class="material-symbols-outlined text-primary text-3xl">add_circle</span></div>
+            <h3 class="font-headline font-bold text-2xl mb-3">1. Report</h3>
+            <p class="text-on-surface-variant leading-relaxed">Citizens capture issues. Govt officials receive them instantly.</p>
+          </div>
+          <div class="bg-surface-container-lowest p-8 rounded-3xl editorial-shadow hover:shadow-xl transition-all" style="border:1px solid rgba(194,198,212,.1)">
+            <div class="w-14 h-14 bg-secondary-fixed rounded-2xl flex items-center justify-center mb-6"><span class="material-symbols-outlined text-secondary text-3xl">group_work</span></div>
+            <h3 class="font-headline font-bold text-2xl mb-3">2. Cluster</h3>
+            <p class="text-on-surface-variant leading-relaxed">Nearby issues cluster automatically, escalating to high urgency.</p>
+          </div>
+          <div class="bg-surface-container-lowest p-8 rounded-3xl editorial-shadow hover:shadow-xl transition-all" style="border:1px solid rgba(194,198,212,.1)">
+            <div class="w-14 h-14 bg-tertiary-fixed rounded-2xl flex items-center justify-center mb-6"><span class="material-symbols-outlined text-tertiary text-3xl">check_circle</span></div>
+            <h3 class="font-headline font-bold text-2xl mb-3">3. Resolve</h3>
+            <p class="text-on-surface-variant leading-relaxed">Officials post proof-of-fix. Citizens see it in their feed.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="max-w-7xl mx-auto px-6 py-20">
+      <div class="btn-gradient rounded-[3rem] p-12 md:p-20 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-12">
+        <div class="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
+        <div class="relative z-10 max-w-xl">
+          <h2 class="font-headline font-extrabold text-4xl md:text-6xl text-white tracking-tight mb-6">Your city, <br/><span class="opacity-60">curated by you.</span></h2>
+          <p class="text-primary-fixed text-lg mb-10 leading-relaxed">Join 40,000+ active citizens making streets safer every day.</p>
+          <button onclick="openAuthModal('citizen')" class="inline-flex items-center gap-2 bg-white text-primary font-bold px-10 py-5 rounded-2xl hover:scale-105 transition-all shadow-xl">
+            Join CivicFix Today
+          </button>
+        </div>
+        <div class="relative z-10 grid grid-cols-2 gap-4">
+          <div class="bg-white/10 backdrop-blur-md p-8 rounded-3xl text-center" style="border:1px solid rgba(255,255,255,.15)">
+            <span class="font-headline font-black text-4xl text-white block mb-1">12k</span>
+            <span class="text-xs uppercase font-bold tracking-widest text-primary-fixed">Issues Fixed</span>
+          </div>
+          <div class="bg-white/10 backdrop-blur-md p-8 rounded-3xl text-center mt-8" style="border:1px solid rgba(255,255,255,.15)">
+            <span class="font-headline font-black text-4xl text-white block mb-1">4.9</span>
+            <span class="text-xs uppercase font-bold tracking-widest text-primary-fixed">User Rating</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer class="bg-surface py-10 px-6" style="border-top:1px solid rgba(194,198,212,.3)">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+      <div class="text-xl font-black tracking-tight text-blue-900 font-headline">CivicFix</div>
+      <div class="flex gap-8 text-sm font-medium text-on-surface-variant">
+        <a class="hover:text-primary transition-colors" href="#">Privacy</a>
+        <a class="hover:text-primary transition-colors" href="#">Terms</a>
+        <a class="hover:text-primary transition-colors" href="#">Help</a>
+      </div>
+      <p class="text-xs text-outline">© 2025 CivicFix. Built for communities.</p>
+    </div>
+  </footer>
+</div>
+
+<!-- ==================== PAGE: FEED ==================== -->
+<div id="page-feed" class="page pt-16 pb-24">
+  <main class="max-w-7xl mx-auto px-4 md:px-6 pt-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
+    <div class="lg:col-span-8 space-y-6">
+      <div class="flex items-center justify-between gap-2 overflow-x-auto pb-1">
+        <div class="flex gap-2 flex-shrink-0">
+          <button onclick="switchFeedTab('nearby')" class="tab-btn px-5 py-2.5 rounded-full text-sm font-bold transition-all" id="tab-nearby">Nearby</button>
+          <button onclick="switchFeedTab('trending')" class="tab-btn px-5 py-2.5 rounded-full bg-surface-container-high text-on-surface-variant text-sm font-medium" id="tab-trending">Trending</button>
+          <button onclick="switchFeedTab('urgent')" class="tab-btn px-5 py-2.5 rounded-full bg-surface-container-high text-on-surface-variant text-sm font-medium" id="tab-urgent">Urgent</button>
+        </div>
+        <button onclick="navigate('create')" class="citizen-only flex-shrink-0 btn-gradient text-white text-xs font-bold px-4 py-2.5 rounded-full flex items-center gap-1.5 shadow-md">
+          <span class="material-symbols-outlined text-base">add</span> Report
+        </button>
+      </div>
+      <div class="bg-primary-fixed rounded-2xl px-4 py-3 flex items-center gap-3">
+        <span class="material-symbols-outlined text-primary" style="font-variation-settings:'FILL' 1">location_on</span>
+        <div class="flex-1">
+          <p class="text-xs font-bold text-primary uppercase tracking-wider">Showing issues within 10km</p>
+          <p id="feed-location-text" class="text-sm font-semibold text-on-surface">Detecting your location…</p>
+        </div>
+        <div class="w-2 h-2 bg-green-500 rounded-full blink"></div>
+      </div>
+      <div id="feed-list" class="space-y-8"></div>
+    </div>
+    <aside class="lg:col-span-4 hidden lg:block">
+      <div class="bg-surface-container-lowest rounded-3xl editorial-shadow sticky top-24 overflow-hidden" style="border:1px solid rgba(194,198,212,.15)">
+        <div class="p-5" style="border-bottom:1px solid rgba(194,198,212,.2)">
+          <div class="flex items-center justify-between">
+            <h4 class="font-headline font-bold text-base">Interactive Map</h4>
+            <button onclick="navigate('map')" class="text-primary"><span class="material-symbols-outlined text-lg">open_in_full</span></button>
+          </div>
+        </div>
+        <div style="height:240px" id="feed-map-container"><div id="leaflet-feed-map" style="width:100%;height:100%"></div></div>
+        <div class="p-5">
+          <p class="text-xs text-outline font-medium mb-3" id="feed-map-count">Loading…</p>
+          <button onclick="navigate('map')" class="w-full py-3 bg-surface-container-high text-primary font-bold rounded-xl hover:bg-primary-fixed transition-colors flex items-center justify-center gap-2 text-sm">
+            <span class="material-symbols-outlined text-base">map</span> View Full Map
+          </button>
+        </div>
+        <div class="m-5 p-5 rounded-2xl text-on-tertiary" style="background:linear-gradient(135deg,#005249,#006c60)">
+          <p class="text-xs font-bold uppercase tracking-widest opacity-80 mb-1">Weekly Impact</p>
+          <div class="flex items-baseline gap-2 mb-3">
+            <span id="weekly-fixed" class="text-4xl font-headline font-black tracking-tight">0</span>
+            <span class="text-sm font-medium">Fixes Verified</span>
+          </div>
+          <div class="w-full bg-white/20 h-1.5 rounded-full overflow-hidden">
+            <div id="weekly-bar" class="bg-white h-full rounded-full" style="width:0%;transition:width 1s ease"></div>
+          </div>
+          <p class="text-xs mt-2 font-medium opacity-90" id="weekly-pct">0% solved in 48h.</p>
+        </div>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<!-- ==================== PAGE: MAP ==================== -->
+<div id="page-map" class="page pt-16" style="height:100vh;overflow:hidden">
+  <div style="height:calc(100vh - 64px);position:relative">
+    <div id="leaflet-main-map" style="height:100%;width:100%"></div>
+    <div class="absolute top-4 left-4 z-[400] flex flex-col gap-3" style="max-width:280px;width:100%">
+      <div class="glass p-4 rounded-3xl shadow-xl" style="border:1px solid rgba(194,198,212,.2)">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="font-headline font-bold text-base">Curate View</h2>
+          <button onclick="resetMapFilters()" class="text-primary text-xs font-semibold">Reset</button>
+        </div>
+        <div class="space-y-3">
+          <div>
+            <span class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Category</span>
+            <div class="flex flex-wrap gap-1.5">
+              <button onclick="toggleMapFilter('all')" class="map-filter-btn px-3 py-1.5 bg-primary-fixed text-on-primary-fixed rounded-full text-xs font-medium" data-filter="all">All</button>
+              <button onclick="toggleMapFilter('Sanitation')" class="map-filter-btn px-3 py-1.5 bg-surface-container-high text-on-surface-variant rounded-full text-xs font-medium" data-filter="Sanitation">Garbage</button>
+              <button onclick="toggleMapFilter('Infrastructure')" class="map-filter-btn px-3 py-1.5 bg-surface-container-high text-on-surface-variant rounded-full text-xs font-medium" data-filter="Infrastructure">Road</button>
+              <button onclick="toggleMapFilter('Utilities')" class="map-filter-btn px-3 py-1.5 bg-surface-container-high text-on-surface-variant rounded-full text-xs font-medium" data-filter="Utilities">Water</button>
+            </div>
+          </div>
+          <div>
+            <span class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Urgency</span>
+            <label class="flex items-center gap-3 p-2 rounded-xl hover:bg-surface-container cursor-pointer">
+              <input type="checkbox" id="filter-high" checked style="accent-color:#00478d"/>
+              <span class="flex-1 text-xs font-medium">High</span>
+              <span class="w-3 h-3 rounded-full bg-error"></span>
+            </label>
+            <label class="flex items-center gap-3 p-2 rounded-xl hover:bg-surface-container cursor-pointer">
+              <input type="checkbox" id="filter-medium" checked style="accent-color:#00478d"/>
+              <span class="flex-1 text-xs font-medium">Medium</span>
+              <span class="w-3 h-3 rounded-full bg-yellow-500"></span>
+            </label>
+            <label class="flex items-center gap-3 p-2 rounded-xl hover:bg-surface-container cursor-pointer">
+              <input type="checkbox" id="filter-low" checked style="accent-color:#00478d"/>
+              <span class="flex-1 text-xs font-medium">Low</span>
+              <span class="w-3 h-3 rounded-full bg-tertiary"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <button onclick="navigate('feed')" class="glass px-5 py-3 rounded-full shadow-lg flex items-center gap-2 text-primary font-bold text-sm hover:bg-white/80 transition-all" style="border:1px solid rgba(194,198,212,.2)">
+        <span class="material-symbols-outlined text-base">arrow_back</span> Return to Feed
+      </button>
+    </div>
+    <div class="absolute bottom-24 md:bottom-8 right-4 z-[400] flex flex-col gap-2">
+      <button id="map-zoom-in" class="w-11 h-11 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-slate-50"><span class="material-symbols-outlined">add</span></button>
+      <button id="map-zoom-out" class="w-11 h-11 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-slate-50"><span class="material-symbols-outlined">remove</span></button>
+      <div class="h-2"></div>
+      <button onclick="centerMapOnUser()" class="w-11 h-11 btn-gradient text-white rounded-full shadow-lg flex items-center justify-center">
+        <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1">my_location</span>
+      </button>
+    </div>
+    <div id="map-detail-panel" class="hidden absolute bottom-20 left-4 right-4 md:bottom-auto md:top-4 md:right-4 md:left-auto z-[400]" style="max-width:340px;width:100%">
+      <div class="bg-white rounded-[2rem] shadow-2xl overflow-hidden fade-in">
+        <div class="relative h-40">
+          <div id="map-panel-img" class="w-full h-full bg-surface-container-high flex items-center justify-center"><span class="material-symbols-outlined text-5xl text-outline/30">image</span></div>
+          <div class="absolute top-3 right-3 flex items-center gap-1.5 glass px-2 py-1 rounded-full">
+            <span id="map-panel-urgency-dot" class="w-2 h-2 rounded-full bg-error"></span>
+            <span id="map-panel-urgency" class="text-xs font-bold uppercase">Urgent</span>
+          </div>
+          <button onclick="closeMapPanel()" class="absolute top-3 left-3 w-8 h-8 glass rounded-full flex items-center justify-center"><span class="material-symbols-outlined text-sm">close</span></button>
+        </div>
+        <div class="p-5">
+          <div class="flex justify-between items-start mb-2">
+            <h3 id="map-panel-title" class="font-headline font-extrabold text-lg leading-tight flex-1 pr-2"></h3>
+            <span id="map-panel-dist" class="text-xs font-medium text-primary bg-primary-fixed px-2 py-1 rounded-lg flex-shrink-0"></span>
+          </div>
+          <p id="map-panel-desc" class="text-on-surface-variant text-sm mb-4 leading-relaxed line-clamp-2"></p>
+          <div class="flex gap-2">
+            <button id="map-panel-view" class="flex-1 btn-gradient text-white py-2.5 rounded-xl font-bold text-sm active:scale-95">View Details</button>
+            <button class="w-11 h-11 flex items-center justify-center rounded-xl text-primary" style="border:1px solid rgba(194,198,212,.4)"><span class="material-symbols-outlined text-base">share</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== PAGE: CREATE REPORT (Citizen) ==================== -->
+<div id="page-create" class="page pt-16 pb-24">
+  <main class="max-w-2xl mx-auto px-6 pt-8 pb-8">
+    <header class="mb-8">
+      <h2 class="font-headline font-bold text-4xl tracking-tight text-primary mb-2">Curate Your City</h2>
+      <p class="text-on-surface-variant font-medium">Capture a neighborhood issue and let's get it resolved together.</p>
+    </header>
+    <form id="create-form" class="space-y-6" onsubmit="submitReport(event)">
+      <section class="relative group">
+        <div id="upload-zone" class="w-full h-64 rounded-3xl bg-surface-container-low overflow-hidden relative flex items-center justify-center cursor-pointer hover:bg-surface-container transition-colors" style="border:2px dashed rgba(194,198,212,.5)" onclick="document.getElementById('photo-input').click()">
+          <input type="file" id="photo-input" accept="image/*" class="hidden" onchange="previewPhoto(event)"/>
+          <div id="upload-placeholder" class="flex flex-col items-center gap-3 text-center p-6">
+            <div class="w-16 h-16 rounded-full bg-primary-fixed flex items-center justify-center">
+              <span class="material-symbols-outlined text-3xl text-primary">photo_camera</span>
+            </div>
+            <p class="font-headline font-bold text-lg">Tap to Upload Photo</p>
+            <p class="text-sm text-outline">High-res photos get faster action</p>
+          </div>
+          <img id="photo-preview" class="hidden absolute inset-0 w-full h-full object-cover"/>
+        </div>
+        <div id="photo-badge" class="hidden absolute -bottom-4 right-6 bg-tertiary-fixed text-on-tertiary-fixed px-4 py-2 rounded-full font-headline font-bold shadow-lg flex items-center gap-2 text-sm">
+          <span class="material-symbols-outlined text-base" style="font-variation-settings:'FILL' 1">check_circle</span> Photo Selected
+        </div>
+      </section>
+      <section class="bg-surface-container-low p-4 rounded-2xl flex items-center gap-4 mt-8">
+        <div class="w-12 h-12 rounded-xl bg-primary-fixed flex items-center justify-center flex-shrink-0"><span class="material-symbols-outlined text-primary" style="font-variation-settings:'FILL' 1">location_on</span></div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2"><span class="text-xs font-bold text-primary uppercase tracking-widest">Live Location</span><span id="loc-dot" class="w-1.5 h-1.5 rounded-full bg-yellow-500"></span></div>
+          <p id="create-location-text" class="text-on-surface font-semibold text-sm truncate">Detecting…</p>
+          <input type="hidden" id="create-lat"/><input type="hidden" id="create-lng"/>
+        </div>
+        <button type="button" class="text-primary font-bold text-sm hover:underline flex-shrink-0" onclick="refreshLocation()">Edit</button>
+      </section>
+      <section class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div class="md:col-span-2 space-y-2">
+          <label class="block font-headline font-bold text-on-surface-variant text-sm">What did you find?</label>
+          <textarea id="issue-desc" class="w-full min-h-40 bg-surface-container-low rounded-2xl p-4 text-sm placeholder:text-outline/50 resize-none" style="border:none;outline:none" maxlength="500" placeholder="Describe the issue…" oninput="updateWordCount(this)" required></textarea>
+          <div class="text-right text-xs font-medium text-outline" id="word-count">0 / 500</div>
+        </div>
+        <div class="flex flex-col gap-3">
+          <label class="block font-headline font-bold text-on-surface-variant text-sm">Category</label>
+          <select id="issue-category" class="w-full bg-surface-container-low rounded-2xl p-3 text-sm font-semibold" style="border:none;outline:none" required onchange="updateCatIcon(this)">
+            <option value="">Select…</option>
+            <option value="Infrastructure">Road / Pothole</option>
+            <option value="Sanitation">Garbage / Waste</option>
+            <option value="Utilities">Water / Sewage</option>
+            <option value="Lighting">Street Lighting</option>
+            <option value="Vandalism">Graffiti</option>
+            <option value="Other">Other</option>
+          </select>
+          <div class="flex-1 bg-surface-container-high/60 rounded-2xl p-4 flex flex-col items-center justify-center text-center">
+            <span id="cat-icon" class="material-symbols-outlined text-3xl text-primary mb-2">category</span>
+            <p class="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Selected</p>
+            <p id="cat-label" class="font-headline font-extrabold text-primary text-sm">None</p>
+          </div>
+        </div>
+      </section>
+      <div class="space-y-2">
+        <label class="block font-headline font-bold text-on-surface-variant text-sm">Brief Title</label>
+        <input id="issue-title" type="text" class="w-full bg-surface-container-low rounded-2xl p-3 text-sm font-semibold" style="border:none;outline:none" placeholder="e.g. Large pothole on 5th Ave" required/>
+      </div>
+      <footer class="pt-4">
+        <button type="submit" class="w-full btn-gradient py-5 rounded-3xl text-white font-headline font-extrabold text-xl shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all">
+          Post Issue <span class="material-symbols-outlined">send</span>
+        </button>
+        <p class="text-center mt-4 text-xs text-outline">By posting, you agree to our <a class="text-primary underline" href="#">Community Guidelines</a></p>
+      </footer>
+    </form>
+  </main>
+</div>
+
+<!-- ==================== PAGE: ISSUE DETAIL ==================== -->
+<div id="page-detail" class="page pt-16 pb-24">
+  <main class="max-w-7xl mx-auto px-4 md:px-6 pt-6">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div class="lg:col-span-8 space-y-6">
+        <div class="relative rounded-[2rem] overflow-hidden aspect-video bg-surface-container editorial-shadow">
+          <div id="detail-img-bg" class="w-full h-full flex items-center justify-center"><span class="material-symbols-outlined text-7xl text-outline/20">image_not_supported</span></div>
+          <div class="absolute top-4 right-4"><span id="detail-status-badge" class="status-badge glass status-reported">Reported</span></div>
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          <div id="detail-seen-card" class="bg-surface-container-lowest p-5 rounded-xl editorial-shadow flex flex-col items-center text-center cursor-pointer hover:bg-primary-fixed transition-colors" onclick="reactIssue('seen')">
+            <span class="material-symbols-outlined text-primary mb-1" style="font-variation-settings:'FILL' 1">visibility</span>
+            <span id="detail-seen-count" class="font-headline font-extrabold text-2xl tracking-tight">0</span>
+            <span class="text-xs uppercase tracking-widest text-outline font-bold">Seen</span>
+          </div>
+          <div id="detail-serious-card" class="bg-surface-container-lowest p-5 rounded-xl editorial-shadow flex flex-col items-center text-center cursor-pointer hover:bg-error-container transition-colors" onclick="reactIssue('serious')" style="border:2px solid rgba(186,26,26,.1)">
+            <span class="material-symbols-outlined text-error mb-1">warning</span>
+            <span id="detail-serious-count" class="font-headline font-extrabold text-2xl tracking-tight text-error">0</span>
+            <span class="text-xs uppercase tracking-widest text-outline font-bold">Serious</span>
+          </div>
+          <div class="bg-surface-container-lowest p-5 rounded-xl editorial-shadow flex flex-col items-center text-center">
+            <span class="material-symbols-outlined text-tertiary mb-1" style="font-variation-settings:'FILL' 1">near_me</span>
+            <span id="detail-near-count" class="font-headline font-extrabold text-2xl tracking-tight">0</span>
+            <span class="text-xs uppercase tracking-widest text-outline font-bold">Near Me</span>
+          </div>
+        </div>
+        <!-- Resolution update posts (from govt officials) -->
+        <div id="detail-updates-section" class="hidden bg-surface-container-lowest p-6 rounded-[2rem] editorial-shadow space-y-4">
+          <h3 class="font-headline font-bold text-lg flex items-center gap-2">
+            <span class="material-symbols-outlined text-tertiary" style="font-variation-settings:'FILL' 1">verified</span> Official Updates
+          </h3>
+          <div id="detail-updates-list" class="space-y-4"></div>
+        </div>
+        <div class="bg-surface-container-lowest p-8 rounded-[2rem] editorial-shadow space-y-6">
+          <div class="flex justify-between items-start">
+            <div>
+              <h1 id="detail-title" class="font-headline font-extrabold text-3xl text-on-surface tracking-tight mb-2"></h1>
+              <div class="flex items-center gap-2 text-outline"><span class="material-symbols-outlined text-sm">location_on</span><span id="detail-location" class="text-sm font-medium"></span></div>
+            </div>
+            <div class="text-right flex-shrink-0 ml-4">
+              <span id="detail-id" class="block font-headline font-bold text-base text-primary"></span>
+              <span class="text-xs text-outline font-semibold uppercase tracking-widest">Report ID</span>
+            </div>
+          </div>
+          <p id="detail-desc" class="text-on-surface-variant leading-relaxed text-base"></p>
+          <div class="pt-6" style="border-top:1px solid rgba(194,198,212,.3)">
+            <h3 class="font-headline font-bold text-xl mb-6">Status Timeline</h3>
+            <div class="relative flex justify-between items-start" id="detail-timeline"><div class="timeline-line"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="lg:col-span-4 space-y-6">
+        <div id="detail-resolution-box" class="bg-surface-container-low p-6 rounded-[2rem]" style="border:2px dashed rgba(194,198,212,.5)">
+          <h3 class="font-headline font-extrabold text-lg mb-4">Official Resolution</h3>
+          <div id="detail-resolution-empty" class="flex flex-col items-center justify-center py-8 text-center">
+            <div class="w-14 h-14 bg-surface-variant/40 rounded-full flex items-center justify-center mb-3"><span class="material-symbols-outlined text-outline text-3xl">pending_actions</span></div>
+            <p class="text-outline font-semibold text-sm">Awaiting official update</p>
+          </div>
+          <div id="detail-resolution-content" class="hidden space-y-3">
+            <div class="flex items-center gap-2 mb-2"><span class="material-symbols-outlined text-tertiary" style="font-variation-settings:'FILL' 1">verified</span><span class="font-bold text-sm">Issue Resolved</span></div>
+            <p id="detail-resolution-note" class="text-sm text-on-surface-variant leading-relaxed"></p>
+          </div>
+        </div>
+        <div class="bg-surface-container-highest p-6 rounded-[2rem] editorial-shadow">
+          <h3 class="font-headline font-bold text-lg mb-4">Location Detail</h3>
+          <div id="detail-map" class="rounded-2xl overflow-hidden mb-4" style="height:200px"></div>
+          <div class="space-y-3">
+            <div class="flex justify-between text-sm"><span class="text-outline font-medium">Category</span><span id="detail-category" class="font-bold"></span></div>
+            <div class="flex justify-between text-sm"><span class="text-outline font-medium">Reported</span><span id="detail-date" class="font-bold"></span></div>
+            <div class="flex justify-between text-sm"><span class="text-outline font-medium">Priority</span><span id="detail-priority" class="font-bold text-error"></span></div>
+          </div>
+        </div>
+        <div class="bg-white p-5 rounded-2xl editorial-shadow">
+          <div class="flex items-center gap-3">
+            <div class="w-11 h-11 rounded-full btn-gradient flex items-center justify-center text-white font-bold flex-shrink-0" id="detail-reporter-avatar">U</div>
+            <div>
+              <p class="text-xs uppercase tracking-widest text-outline font-bold">Reported By</p>
+              <p id="detail-reporter" class="font-headline font-bold text-on-surface"></p>
+              <p class="text-xs text-primary font-semibold">Civic Contributor</p>
+            </div>
+          </div>
+        </div>
+        <!-- Govt Official quick-update panel -->
+        <div id="detail-govt-panel" class="hidden p-6 rounded-2xl editorial-shadow space-y-3" style="background:#d8f3dc;border:1px solid #95d5b2">
+          <h4 class="font-headline font-bold text-base flex items-center gap-2" style="color:#1a3a2a"><span class="material-symbols-outlined text-lg">verified_user</span> Official Action</h4>
+          <select id="detail-status-select" class="w-full rounded-xl p-3 text-sm font-semibold" style="border:none;background:#fff">
+            <option value="Verified">Verified</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Resolved">Resolved</option>
+          </select>
+          <textarea id="detail-resolution-input" class="w-full rounded-xl p-3 text-sm resize-none" style="border:none;outline:none;background:#fff" rows="3" placeholder="Add official note…"></textarea>
+          <button onclick="updateIssueStatus()" class="w-full govt-gradient text-white font-bold py-3 rounded-xl text-sm active:scale-95 transition-all flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined text-base">save</span> Update Status
+          </button>
+          <button onclick="closeProfile();navigate('govt-post');prefillGovtPost(currentDetailId)" class="w-full bg-white font-bold py-3 rounded-xl text-sm active:scale-95 transition-all flex items-center justify-center gap-2" style="color:#1a3a2a;border:1px solid #95d5b2">
+            <span class="material-symbols-outlined text-base">post_add</span> Post Resolution Update
+          </button>
+        </div>
+        <!-- Admin panel -->
+        <div id="detail-admin-panel" class="hidden bg-surface-container-lowest p-6 rounded-2xl editorial-shadow space-y-4">
+          <h4 class="font-headline font-bold text-base">Admin: Update Status</h4>
+          <select id="detail-admin-status-select" class="w-full bg-surface-container-low rounded-xl p-3 text-sm font-semibold" style="border:none">
+            <option value="Reported">Reported</option><option value="Verified">Verified</option>
+            <option value="In Progress">In Progress</option><option value="Resolved">Resolved</option>
+          </select>
+          <textarea id="detail-admin-resolution-input" class="w-full bg-surface-container-low rounded-xl p-3 text-sm resize-none" style="border:none;outline:none" rows="3" placeholder="Add note…"></textarea>
+          <button onclick="updateIssueStatusAdmin()" class="w-full btn-gradient text-white font-bold py-3 rounded-xl text-sm active:scale-95">Update</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ==================== PAGE: COMPLAINTS (Govt) ==================== -->
+<div id="page-complaints" class="page pt-16 pb-24">
+  <main class="max-w-6xl mx-auto px-4 md:px-6 pt-6 space-y-6">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <h1 class="font-headline font-extrabold text-3xl govt-text-gradient tracking-tight">Complaints Dashboard</h1>
+        <p id="complaints-dept-label" class="text-sm text-on-surface-variant mt-1">Your assigned jurisdiction</p>
+      </div>
+      <button onclick="navigate('govt-post')" class="govt-gradient text-white font-bold px-5 py-3 rounded-2xl flex items-center gap-2 text-sm active:scale-95 shadow-md">
+        <span class="material-symbols-outlined text-base">post_add</span> Post Update
+      </button>
+    </div>
+
+    <!-- Metrics -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="bg-surface-container-lowest p-5 rounded-2xl editorial-shadow">
+        <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Total Open</div>
+        <div id="c-open" class="font-headline font-extrabold text-3xl text-error">0</div>
+      </div>
+      <div class="bg-surface-container-lowest p-5 rounded-2xl editorial-shadow">
+        <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">High Urgency</div>
+        <div id="c-high" class="font-headline font-extrabold text-3xl text-error">0</div>
+      </div>
+      <div class="bg-surface-container-lowest p-5 rounded-2xl editorial-shadow">
+        <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">In Progress</div>
+        <div id="c-inprog" class="font-headline font-extrabold text-3xl" style="color:#1a3a2a">0</div>
+      </div>
+      <div class="bg-surface-container-lowest p-5 rounded-2xl editorial-shadow">
+        <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Resolved by Us</div>
+        <div id="c-resolved" class="font-headline font-extrabold text-3xl text-tertiary">0</div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="flex flex-wrap gap-2">
+      <button onclick="complaintFilter('all')" class="complaint-filter-btn px-4 py-2 rounded-full text-xs font-bold" style="background:#d8f3dc;color:#1a3a2a" data-f="all">All</button>
+      <button onclick="complaintFilter('high')" class="complaint-filter-btn px-4 py-2 rounded-full text-xs font-bold bg-surface-container-highest text-on-surface-variant" data-f="high">🔴 High Urgency</button>
+      <button onclick="complaintFilter('Reported')" class="complaint-filter-btn px-4 py-2 rounded-full text-xs font-bold bg-surface-container-highest text-on-surface-variant" data-f="Reported">New Reports</button>
+      <button onclick="complaintFilter('In Progress')" class="complaint-filter-btn px-4 py-2 rounded-full text-xs font-bold bg-surface-container-highest text-on-surface-variant" data-f="In Progress">In Progress</button>
+      <button onclick="complaintFilter('Verified')" class="complaint-filter-btn px-4 py-2 rounded-full text-xs font-bold bg-surface-container-highest text-on-surface-variant" data-f="Verified">Verified</button>
+    </div>
+
+    <!-- List -->
+    <div id="complaints-list" class="space-y-3"></div>
+  </main>
+</div>
+
+<!-- ==================== PAGE: GOVT POST UPDATE ==================== -->
+<div id="page-govt-post" class="page pt-16 pb-24">
+  <main class="max-w-2xl mx-auto px-6 pt-8">
+    <div class="mb-6 flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl govt-gradient flex items-center justify-center">
+        <span class="material-symbols-outlined text-white text-lg">post_add</span>
+      </div>
+      <div>
+        <h2 class="font-headline font-bold text-2xl govt-text-gradient">Post Resolution Update</h2>
+        <p class="text-sm text-on-surface-variant">Attach proof of fix — visible to all citizens on that issue's feed</p>
+      </div>
+    </div>
+
+    <!-- Linked issue selector -->
+    <div class="bg-surface-container-low p-4 rounded-2xl mb-6 space-y-2">
+      <label class="text-xs font-bold uppercase tracking-widest text-slate-400">Linked Issue</label>
+      <select id="gp-issue-select" class="w-full bg-white rounded-xl p-3 text-sm font-semibold" style="border:1px solid rgba(194,198,212,.4);outline:none" onchange="previewLinkedIssue()">
+        <option value="">Select an open issue…</option>
+      </select>
+      <div id="gp-linked-preview" class="hidden p-3 rounded-xl mt-1" style="background:#d8f3dc">
+        <p id="gp-linked-title" class="text-sm font-bold" style="color:#1a3a2a"></p>
+        <p id="gp-linked-meta" class="text-xs" style="color:#2d6a4f"></p>
+      </div>
+    </div>
+
+    <!-- Photo upload -->
+    <div class="mb-5">
+      <label class="text-xs font-bold uppercase tracking-widest text-slate-400 block mb-2">Proof of Fix (Photo)</label>
+      <div class="upload-zone p-8 flex flex-col items-center gap-3 text-center" onclick="document.getElementById('gp-photo').click()">
+        <input type="file" id="gp-photo" accept="image/*" class="hidden" onchange="previewGovtPhoto(event)"/>
+        <div id="gp-photo-placeholder">
+          <div class="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center mb-2" style="background:#d8f3dc"><span class="material-symbols-outlined text-3xl" style="color:#1a3a2a">add_photo_alternate</span></div>
+          <p class="font-semibold text-sm text-on-surface">Upload resolution photo</p>
+          <p class="text-xs text-outline mt-1">Before & after shots work best</p>
+        </div>
+        <img id="gp-photo-preview" class="hidden w-full rounded-xl object-cover" style="max-height:240px" alt="preview"/>
+      </div>
+    </div>
+
+    <!-- Status -->
+    <div class="mb-5 grid grid-cols-2 gap-4">
+      <div>
+        <label class="text-xs font-bold uppercase tracking-widest text-slate-400 block mb-2">Mark Status As</label>
+        <select id="gp-status" class="w-full bg-surface-container-low rounded-xl p-3 text-sm font-semibold" style="border:none;outline:none">
+          <option value="Resolved">Resolved ✅</option>
+          <option value="In Progress">In Progress 🔧</option>
+          <option value="Verified">Verified 🔍</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-xs font-bold uppercase tracking-widest text-slate-400 block mb-2">Work Done By</label>
+        <input id="gp-workby" type="text" class="w-full bg-surface-container-low rounded-xl p-3 text-sm" style="border:none;outline:none" placeholder="Team / Contractor name"/>
+      </div>
+    </div>
+
+    <!-- Note -->
+    <div class="mb-6">
+      <label class="text-xs font-bold uppercase tracking-widest text-slate-400 block mb-2">Resolution Notes</label>
+      <textarea id="gp-note" class="w-full bg-surface-container-low rounded-2xl p-4 text-sm resize-none" style="border:none;outline:none" rows="4" placeholder="Describe what was done — materials used, time taken, contractor…"></textarea>
+    </div>
+
+    <!-- Visibility notice -->
+    <div class="mb-6 flex items-start gap-3 p-4 rounded-2xl" style="background:#d8f3dc;border:1px solid #95d5b2">
+      <span class="material-symbols-outlined text-lg flex-shrink-0 mt-0.5" style="color:#1a3a2a">info</span>
+      <p class="text-xs leading-relaxed" style="color:#1a3a2a">This update will be <strong>visible to all citizens</strong> who have this issue in their feed. It will appear as an "Official Update" card with your department name and resolution photo.</p>
+    </div>
+
+    <button onclick="postGovtUpdate()" class="w-full govt-gradient text-white font-headline font-extrabold text-lg py-5 rounded-3xl shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all">
+      <span class="material-symbols-outlined">verified</span> Publish Official Update
+    </button>
+  </main>
+</div>
+
+<!-- ==================== PAGE: ADMIN ==================== -->
+<div id="page-admin" class="page pt-16 pb-24">
+  <div class="flex min-h-screen">
+    <aside class="hidden md:flex flex-col w-64 p-4 gap-2 fixed left-0 top-16 h-[calc(100vh-64px)]" style="background:#f2f3fb">
+      <div class="mb-4 px-2 pt-2"><p class="text-lg font-black font-headline text-blue-900">The Urban Curator</p><p class="text-xs text-slate-500 uppercase tracking-widest font-semibold">Admin Panel v2.0</p></div>
+      <nav class="flex-1 space-y-1">
+        <button onclick="adminTab('feed')" class="admin-nav-btn w-full flex items-center gap-3 bg-white text-blue-700 rounded-xl shadow-sm px-4 py-3 font-semibold text-sm" id="admin-nav-feed"><span class="material-symbols-outlined text-lg">forum</span> Community Feed</button>
+        <button onclick="adminTab('map')" class="admin-nav-btn w-full flex items-center gap-3 text-slate-500 hover:text-blue-600 hover:bg-white/60 transition-all px-4 py-3 font-semibold text-sm" id="admin-nav-map"><span class="material-symbols-outlined text-lg">location_on</span> Local Map</button>
+        <button onclick="adminTab('analytics')" class="admin-nav-btn w-full flex items-center gap-3 text-slate-500 hover:text-blue-600 hover:bg-white/60 transition-all px-4 py-3 font-semibold text-sm" id="admin-nav-analytics"><span class="material-symbols-outlined text-lg">auto_graph</span> Analytics</button>
+        <button onclick="adminTab('resolve')" class="admin-nav-btn w-full flex items-center gap-3 text-slate-500 hover:text-blue-600 hover:bg-white/60 transition-all px-4 py-3 font-semibold text-sm" id="admin-nav-resolve"><span class="material-symbols-outlined text-lg">verified</span> Resolution Portal</button>
+      </nav>
+      <button onclick="navigate('create')" class="mt-auto btn-gradient text-white font-bold py-4 rounded-[1.5rem] shadow-lg flex items-center justify-center gap-2 text-sm"><span class="material-symbols-outlined">add</span> Report Issue</button>
+    </aside>
+    <main class="flex-1 md:ml-64 p-4 md:p-8 space-y-8">
+      <section class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div class="bg-surface-container-lowest p-6 rounded-[1.5rem] editorial-shadow flex flex-col justify-between h-36 overflow-hidden">
+          <div class="flex justify-between items-start"><span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Reports</span><span class="material-symbols-outlined text-primary text-xl">analytics</span></div>
+          <div><h2 id="admin-total" class="text-4xl font-headline font-extrabold">0</h2><p class="text-xs text-green-600 font-bold mt-1 flex items-center gap-1"><span class="material-symbols-outlined text-sm">trending_up</span> Live count</p></div>
+        </div>
+        <div class="bg-surface-container-lowest p-6 rounded-[1.5rem] editorial-shadow flex flex-col justify-between h-36 overflow-hidden">
+          <div class="flex justify-between items-start"><span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Resolved This Week</span><span class="material-symbols-outlined text-tertiary text-xl">check_circle</span></div>
+          <div><h2 id="admin-resolved" class="text-4xl font-headline font-extrabold">0</h2><div class="w-full bg-surface-container-high h-1.5 rounded-full mt-2"><div id="admin-resolved-bar" class="bg-tertiary-fixed-dim h-full rounded-full transition-all duration-1000" style="width:0%"></div></div></div>
+        </div>
+        <div class="bg-error-container p-6 rounded-[1.5rem] editorial-shadow flex flex-col justify-between h-36 overflow-hidden">
+          <div class="flex justify-between items-start"><span class="text-xs font-semibold text-on-error-container uppercase tracking-wider">High Urgency</span><span class="material-symbols-outlined text-error text-xl">warning</span></div>
+          <div><h2 id="admin-urgent" class="text-4xl font-headline font-extrabold text-on-error-container">0</h2><p class="text-xs text-on-error-container/70 font-medium mt-1 italic" id="admin-urgent-msg">No urgent issues</p></div>
+        </div>
+      </section>
+      <div id="admin-tab-feed" class="admin-tab-content">
+        <section class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 bg-surface-container-low p-4 rounded-[1.5rem]">
+          <div class="flex flex-wrap gap-2">
+            <button onclick="adminFilterCat('all')" class="admin-cat-btn px-4 py-2 rounded-full bg-primary-fixed text-on-primary-fixed font-semibold text-xs" data-cat="all">All</button>
+            <button onclick="adminFilterCat('Sanitation')" class="admin-cat-btn px-4 py-2 rounded-full bg-surface-container-highest text-on-surface-variant font-medium text-xs" data-cat="Sanitation">Garbage</button>
+            <button onclick="adminFilterCat('Infrastructure')" class="admin-cat-btn px-4 py-2 rounded-full bg-surface-container-highest text-on-surface-variant font-medium text-xs" data-cat="Infrastructure">Road</button>
+            <button onclick="adminFilterCat('Utilities')" class="admin-cat-btn px-4 py-2 rounded-full bg-surface-container-highest text-on-surface-variant font-medium text-xs" data-cat="Utilities">Water</button>
+          </div>
+          <div class="relative flex-1 lg:w-56"><span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span><input id="admin-search" class="w-full pl-9 pr-4 py-2 bg-surface-container-lowest rounded-xl text-sm" style="border:none;outline:none" placeholder="Search…" oninput="renderAdminFeed()"/></div>
+        </section>
+        <div id="admin-feed-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6"></div>
+      </div>
+      <div id="admin-tab-map" class="admin-tab-content hidden"><div class="bg-surface-container-lowest rounded-[1.5rem] editorial-shadow overflow-hidden" style="height:500px"><div id="leaflet-admin-map" style="height:100%;width:100%"></div></div></div>
+      <div id="admin-tab-analytics" class="admin-tab-content hidden">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="bg-surface-container-lowest p-6 rounded-[1.5rem] editorial-shadow"><h3 class="font-headline font-bold text-lg mb-4">By Category</h3><div id="analytics-cats" class="space-y-3"></div></div>
+          <div class="bg-surface-container-lowest p-6 rounded-[1.5rem] editorial-shadow"><h3 class="font-headline font-bold text-lg mb-4">Status Breakdown</h3><div id="analytics-status" class="space-y-3"></div></div>
+        </div>
+      </div>
+      <div id="admin-tab-resolve" class="admin-tab-content hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 bg-surface-container-high rounded-[1.5rem] p-6 items-start">
+          <div class="lg:col-span-5 space-y-5">
+            <h2 class="text-2xl font-headline font-extrabold">Resolution Portal</h2>
+            <p class="text-slate-600 text-sm leading-relaxed">Finalize resolved cases and notify reporting citizens.</p>
+            <div class="bg-surface p-5 rounded-[1.5rem]"><div class="flex items-center gap-3"><div class="w-10 h-10 bg-tertiary-fixed rounded-xl flex items-center justify-center"><span class="material-symbols-outlined text-lg" style="font-variation-settings:'FILL' 1">verified</span></div><div><h4 class="font-bold text-sm">Weekly Success Rate</h4><p id="admin-success-rate" class="text-xs text-slate-500">Calculating…</p></div></div></div>
+            <div class="space-y-2"><p class="text-sm font-semibold text-on-surface-variant">Select Issue:</p><div id="resolve-issue-list" class="space-y-2 max-h-60 overflow-y-auto"></div></div>
+          </div>
+          <div class="lg:col-span-7 bg-surface-container-lowest p-6 rounded-[1.5rem] shadow-xl space-y-5">
+            <div class="grid grid-cols-2 gap-4">
+              <div class="space-y-1"><label class="text-xs font-bold uppercase tracking-widest text-slate-400">Issue ID</label><input id="resolve-id" class="w-full bg-surface-container-low rounded-xl text-sm font-semibold p-3 text-slate-500" disabled type="text" value="Select an issue"/></div>
+              <div class="space-y-1"><label class="text-xs font-bold uppercase tracking-widest text-slate-400">New Status</label><select id="resolve-status" class="w-full bg-surface-container-low rounded-xl text-sm font-semibold p-3" style="border:none;outline:none"><option>Resolved</option><option>In Progress</option><option>Verified</option><option>Closed - Non Issue</option></select></div>
+            </div>
+            <div class="space-y-1"><label class="text-xs font-bold uppercase tracking-widest text-slate-400">Resolution Note</label><textarea id="resolve-note" class="w-full bg-surface-container-low rounded-xl text-sm p-3 resize-none" style="border:none;outline:none" rows="4" placeholder="Detail the fix…"></textarea></div>
+            <button onclick="finalizeResolution()" class="w-full btn-gradient text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-all text-sm">Finalize Resolution</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ==================== TOAST ==================== -->
+<div id="toast" class="fixed top-20 right-4 z-[2000] hidden transition-all">
+  <div class="glass px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3" style="border:1px solid rgba(144,244,227,.5);background:rgba(144,244,227,.9)">
+    <span class="material-symbols-outlined text-tertiary" style="font-variation-settings:'FILL' 1">check_circle</span>
+    <span id="toast-msg" class="font-semibold text-sm text-on-surface"></span>
+  </div>
+</div>
+
+<script>
+// ====================== CONFIG ======================
+const API_BASE = 'http://localhost:5000/api';
+
+// ====================== STATE ======================
+let issues = [];
+let currentUser    = localStorage.getItem('civicfix_user')    || null;
+let currentRole    = localStorage.getItem('civicfix_role')    || 'citizen'; // 'citizen'|'govt'|'admin'
+let currentProfile = JSON.parse(localStorage.getItem('civicfix_profile') || 'null');
+let isAdmin        = currentRole === 'admin';
+let isGovt         = currentRole === 'govt';
+let userLocation   = null;
+let currentDetailId = null;
+let mapFilterCat   = 'all';
+let adminCatFilter = 'all';
+let currentFeedTab = 'nearby';
+let complaintFilterVal = 'all';
+let govtPostPrefillId  = null;
+
+// Reaction tracking
+let myReactions = JSON.parse(localStorage.getItem('civicfix_reactions') || '{}');
+function saveMyReactions() { localStorage.setItem('civicfix_reactions', JSON.stringify(myReactions)); }
+function reactionKey(id, type) { return id + '_' + type; }
+
+// Points system (stored locally; in production, store in DB per user)
+let myPoints = parseInt(localStorage.getItem('civicfix_points') || '0');
+function addPoints(n) { myPoints += n; localStorage.setItem('civicfix_points', myPoints); }
+
+// Govt resolution updates (cached locally for demo; production: separate API endpoint)
+let govtUpdates = JSON.parse(localStorage.getItem('civicfix_govt_updates') || '[]');
+function saveGovtUpdates() { localStorage.setItem('civicfix_govt_updates', JSON.stringify(govtUpdates)); }
+
+// Maps
+let mainMap = null, feedMap = null, adminMap = null, detailMap = null;
+let mainMarkers = [];
+
+// ====================== API HELPERS ======================
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(API_BASE + path, {
+    headers: { 'Content-Type': 'application/json', ...(opts.headers||{}) }, ...opts
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'API error ' + res.status);
+  return json;
+}
+
+function normalise(raw) {
+  const [lng, lat] = raw.location?.coordinates || [77.4126, 23.2599];
+  return {
+    id: raw._id, title: raw.title, desc: raw.desc,
+    category: raw.category, status: raw.status, urgency: raw.urgency,
+    lat, lng, location: raw.locationText || 'Unknown',
+    reporter: raw.reporter || 'Anonymous', photoUrl: raw.photoUrl || '',
+    reactions: {
+      seen:    raw.reactionCounts?.seen    ?? raw.reactions?.filter(r=>r.type==='seen').length    ?? 0,
+      serious: raw.reactionCounts?.serious ?? raw.reactions?.filter(r=>r.type==='serious').length ?? 0,
+    },
+    date: raw.createdAt || raw.date || new Date().toISOString(),
+    resolutionNote: raw.resolutionNote || '',
+    distanceKm: raw.distanceKm,
+  };
+}
+
+async function loadIssues(params = {}) {
+  let qs = new URLSearchParams();
+  if (userLocation) { qs.set('lat', userLocation.lat); qs.set('lng', userLocation.lng); qs.set('radius', 10); }
+  Object.entries(params).forEach(([k,v]) => qs.set(k,v));
+  try {
+    const data = await apiFetch('/issues?' + qs);
+    issues = (data.data || []).map(normalise);
+    return issues;
+  } catch(e) { console.warn('loadIssues:', e.message); return issues; }
+}
+
+async function seedIfEmpty() {
+  try {
+    const data = await apiFetch('/issues?limit=1');
+    if (data.count > 0) return;
+    const base = userLocation || { lat:23.2599, lng:77.4126 };
+    const samples = [
+      { title:'Overflowing Bin - MG Road', desc:'Central bin not collected for 3 days. Attracting pests and blocking walkway.', category:'Sanitation', status:'Reported', urgency:'high' },
+      { title:'Severe Pothole - Arera Colony', desc:'Large pothole causing vehicle damage. Verified by patrol officer.', category:'Infrastructure', status:'Verified', urgency:'high' },
+      { title:'Burst Water Main - Near Lake', desc:'Water pressure dropped in entire block. Maintenance crew on-site.', category:'Utilities', status:'In Progress', urgency:'medium' },
+      { title:'Broken Street Light - Shivaji Nagar', desc:'Street light out for 5 days creating safety hazard at night.', category:'Lighting', status:'Reported', urgency:'medium' },
+      { title:'Graffiti at Community Hub', desc:'Tagging on the new mural.', category:'Vandalism', status:'Resolved', urgency:'low', resolutionNote:'Cleaned and repainted.' },
+    ];
+    await Promise.all(samples.map(s => apiFetch('/issues', { method:'POST', body:JSON.stringify({
+      ...s, lat: base.lat+(Math.random()-.5)*.08, lng: base.lng+(Math.random()-.5)*.08,
+      locationText:'Bhopal, MP', reporter:'Demo User'
+    })})));
+  } catch(e) { console.warn('seed skipped:', e.message); }
+}
+
+// ====================== AUTH ======================
+function openAuthModal(role) {
+  document.getElementById('auth-modal').classList.remove('hidden');
+  switchAuthRole(role || 'citizen');
+}
+
+function closeAuthModal() {
+  document.getElementById('auth-modal').classList.add('hidden');
+}
+
+function switchAuthRole(role) {
+  const isCit = role === 'citizen';
+  document.getElementById('citizen-form').classList.toggle('hidden', !isCit);
+  document.getElementById('govt-form').classList.toggle('hidden', isCit);
+  document.getElementById('auth-tab-citizen').classList.toggle('selected', isCit);
+  document.getElementById('auth-tab-govt').classList.toggle('selected', !isCit);
+  if (isCit) {
+    document.getElementById('auth-tab-citizen').style.cssText = 'background:white;color:#00478d;box-shadow:0 2px 8px rgba(0,0,0,.06)';
+    document.getElementById('auth-tab-govt').style.cssText = 'background:transparent;color:#727783';
+  } else {
+    document.getElementById('auth-tab-govt').style.cssText = 'background:white;color:#1a3a2a;box-shadow:0 2px 8px rgba(0,0,0,.06)';
+    document.getElementById('auth-tab-citizen').style.cssText = 'background:transparent;color:#727783';
+  }
+}
+
+async function doLogin() {
+  const name = document.getElementById('c-name').value.trim();
+  if (!name) { showToast('Please enter your name!'); return; }
+  const role = name.toLowerCase() === 'admin' ? 'admin' : 'citizen';
+  _setSession(name, role, null);
+  closeAuthModal();
+  showToast('Welcome, ' + name + '! 🎉');
+  if (!userLocation) await getUserLocation();
+  await seedIfEmpty();
+  navigate('feed');
+}
+
+async function doGovtLogin() {
+  const name   = document.getElementById('g-name').value.trim();
+  const dept   = document.getElementById('g-dept').value;
+  const area   = document.getElementById('g-area').value.trim();
+  const empid  = document.getElementById('g-empid').value.trim();
+  if (!name || !dept || !area) { showToast('Please fill all fields!'); return; }
+  const profile = { dept, area, empid };
+  _setSession(name, 'govt', profile);
+  closeAuthModal();
+  showToast('Welcome, ' + name + '! 🛡️');
+  if (!userLocation) await getUserLocation();
+  await seedIfEmpty();
+  navigate('feed');
+}
+
+function _setSession(name, role, profile) {
+  currentUser    = name;
+  currentRole    = role;
+  isAdmin        = role === 'admin';
+  isGovt         = role === 'govt';
+  currentProfile = profile;
+  localStorage.setItem('civicfix_user', name);
+  localStorage.setItem('civicfix_role', role);
+  localStorage.setItem('civicfix_profile', JSON.stringify(profile));
+  _applyRoleUI();
+}
+
+function _applyRoleUI() {
+  if (!currentUser) return;
+  // Avatar
+  const av = document.getElementById('user-avatar');
+  av.textContent = currentUser[0].toUpperCase();
+  if (isGovt) av.style.background = 'linear-gradient(135deg,#1a3a2a,#2d6a4f)';
+  else if (isAdmin) av.style.background = 'linear-gradient(135deg,#4f46e5,#7c3aed)';
+  else av.style.background = 'linear-gradient(135deg,#00478d,#005eb8)';
+
+  // Role badge in header
+  const badge = document.getElementById('user-role-badge');
+  badge.classList.remove('hidden');
+  if (isGovt) {
+    badge.innerHTML = `<span class="govt-badge">${(currentProfile?.dept||'Govt').split(' – ')[0]}</span>`;
+  } else if (isAdmin) {
+    badge.innerHTML = `<span style="background:linear-gradient(135deg,#4f46e5,#7c3aed)" class="text-white text-xs font-bold px-3 py-1 rounded-full">Admin</span>`;
+  } else { badge.innerHTML = ''; }
+
+  // Brand colour
+  const brand = document.getElementById('brand-title');
+  if (isGovt) { brand.style.color = '#1a3a2a'; }
+  else { brand.style.color = '#1e3a5f'; }
+
+  // Header border
+  const hdr = document.getElementById('global-header');
+  if (isGovt) hdr.classList.add('govt-header'); else hdr.classList.remove('govt-header');
+
+  // Show/hide nav items
+  document.querySelectorAll('.citizen-only').forEach(el => el.classList.toggle('hidden', isGovt));
+  document.querySelectorAll('.govt-only').forEach(el => el.classList.toggle('hidden', !isGovt));
+  document.querySelectorAll('.admin-only').forEach(el => el.classList.toggle('hidden', !isAdmin));
+}
+
+function doLogout() {
+  closeProfile();
+  localStorage.removeItem('civicfix_user');
+  localStorage.removeItem('civicfix_role');
+  localStorage.removeItem('civicfix_profile');
+  currentUser = null; currentRole = 'citizen'; isAdmin = false; isGovt = false; currentProfile = null;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-landing').classList.add('active');
+  document.getElementById('user-role-badge').classList.add('hidden');
+  document.getElementById('user-avatar').innerHTML = '<span class="material-symbols-outlined text-lg">person</span>';
+  document.getElementById('brand-title').style.color = '#1e3a5f';
+  document.getElementById('global-header').classList.remove('govt-header');
+  document.querySelectorAll('.govt-only').forEach(el => el.classList.add('hidden'));
+  document.querySelectorAll('.citizen-only').forEach(el => el.classList.remove('hidden'));
+  showToast('Signed out successfully');
+}
+
+// ====================== PROFILE SIDEBAR ======================
+function openProfile() {
+  if (!currentUser) { openAuthModal('citizen'); return; }
+  _buildProfile();
+  document.getElementById('profile-sidebar').classList.add('open');
+  document.getElementById('profile-overlay').classList.add('show');
+}
+
+function closeProfile() {
+  document.getElementById('profile-sidebar').classList.remove('open');
+  document.getElementById('profile-overlay').classList.remove('show');
+}
+
+function _buildProfile() {
+  document.getElementById('profile-name').textContent = currentUser;
+  document.getElementById('profile-avatar-big').textContent = currentUser[0].toUpperCase();
+  if (isGovt) document.getElementById('profile-avatar-big').style.background = 'linear-gradient(135deg,#1a3a2a,#2d6a4f)';
+
+  const roleLabels = { citizen:'Civic Member', govt:'Government Official', admin:'Platform Admin' };
+  document.getElementById('profile-role-label').textContent = roleLabels[currentRole] || 'Member';
+  document.getElementById('profile-dept-label').textContent = currentProfile?.dept ? currentProfile.dept + (currentProfile.area ? ' · ' + currentProfile.area : '') : '';
+
+  // Points & rank
+  document.getElementById('profile-points').textContent = myPoints;
+  const rank = myPoints >= 500 ? '🏆' : myPoints >= 200 ? '🥇' : myPoints >= 50 ? '🥈' : '🥉';
+  document.getElementById('profile-rank').textContent = rank;
+
+  // Posts authored
+  const myPosts = issues.filter(i => i.reporter === currentUser);
+  const myResolved = myPosts.filter(i => i.status === 'Resolved');
+  document.getElementById('profile-posts-count').textContent     = myPosts.length;
+  document.getElementById('profile-resolved-count').textContent  = myResolved.length;
+
+  // Reaction count from local store
+  const reactionCount = Object.keys(myReactions).length;
+  document.getElementById('profile-reactions-count').textContent = reactionCount;
+
+  // Hide report button for govt
+  document.querySelectorAll('.citizen-only').forEach(el => el.classList.toggle('hidden', isGovt));
+
+  switchProfileTab('posts');
+}
+
+function switchProfileTab(tab) {
+  const isPosts = tab === 'posts';
+  document.getElementById('profile-posts-list').classList.toggle('hidden', !isPosts);
+  document.getElementById('profile-reactions-list').classList.toggle('hidden', isPosts);
+
+  document.getElementById('ptab-posts').style.cssText     = isPosts    ? 'border-bottom:2px solid #00478d;color:#00478d;font-weight:700' : 'border-bottom:2px solid transparent;color:#727783;font-weight:500';
+  document.getElementById('ptab-reactions').style.cssText = !isPosts   ? 'border-bottom:2px solid #00478d;color:#00478d;font-weight:700' : 'border-bottom:2px solid transparent;color:#727783;font-weight:500';
+
+  if (isPosts) _renderProfilePosts();
+  else         _renderProfileReactions();
+}
+
+function _renderProfilePosts() {
+  const myPosts = issues.filter(i => i.reporter === currentUser);
+  const el = document.getElementById('profile-posts-list');
+  if (myPosts.length === 0) { el.innerHTML = '<div class="text-center py-8 text-outline"><span class="material-symbols-outlined text-4xl block mb-2">inbox</span><p class="text-sm font-semibold">No posts yet</p></div>'; return; }
+  const statusMap = { Reported:'status-reported', Verified:'status-verified', 'In Progress':'status-inprogress', Resolved:'status-resolved' };
+  el.innerHTML = myPosts.map(i => `
+    <button onclick="closeProfile();openDetail('${i.id}')" class="w-full text-left p-4 rounded-2xl hover:bg-surface-container-low transition-colors" style="border:1px solid rgba(194,198,212,.25)">
+      <div class="flex items-start justify-between gap-2 mb-1">
+        <p class="font-semibold text-sm text-on-surface leading-tight flex-1">${i.title}</p>
+        <span class="status-badge ${statusMap[i.status]||'status-reported'} flex-shrink-0">${i.status}</span>
+      </div>
+      <p class="text-xs text-outline">${i.category} · ${timeAgo(i.date)} · ${i.reactions.seen} seen · ${i.reactions.serious} serious</p>
+      ${i.reactions.seen >= 5 ? '<p class="text-xs font-bold text-primary mt-1">+10 pts earned</p>' : ''}
+    </button>`).join('');
+}
+
+function _renderProfileReactions() {
+  const el = document.getElementById('profile-reactions-list');
+  const keys = Object.keys(myReactions);
+  if (keys.length === 0) { el.innerHTML = '<div class="text-center py-8 text-outline"><span class="material-symbols-outlined text-4xl block mb-2">sentiment_neutral</span><p class="text-sm font-semibold">No reactions yet</p></div>'; return; }
+  const reacted = keys.map(k => {
+    const [id, type] = k.split('_');
+    const issue = issues.find(i => i.id === id);
+    return { id, type, issue };
+  }).filter(r => r.issue);
+  if (reacted.length === 0) { el.innerHTML = '<div class="text-center py-8 text-outline"><p class="text-sm">No recent reactions found</p></div>'; return; }
+  el.innerHTML = reacted.map(r => `
+    <button onclick="closeProfile();openDetail('${r.id}')" class="w-full text-left p-4 rounded-2xl hover:bg-surface-container-low transition-colors flex items-center gap-3" style="border:1px solid rgba(194,198,212,.25)">
+      <div class="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center ${r.type==='seen'?'bg-primary-fixed':'bg-error-container'}">
+        <span class="material-symbols-outlined text-sm ${r.type==='seen'?'text-primary':'text-error'}">${r.type==='seen'?'visibility':'warning'}</span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-semibold text-on-surface truncate">${r.issue.title}</p>
+        <p class="text-xs text-outline mt-0.5">Marked as <strong>${r.type}</strong> · ${timeAgo(r.issue.date)}</p>
+      </div>
+    </button>`).join('');
+}
+
+// ====================== LOCATION ======================
+function getUserLocation() {
+  return new Promise(resolve => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        pos => { userLocation = { lat:pos.coords.latitude, lng:pos.coords.longitude }; resolve(userLocation); },
+        ()  => { userLocation = { lat:23.2599, lng:77.4126 }; resolve(userLocation); },
+        { timeout:6000 }
+      );
+    } else { userLocation = { lat:23.2599, lng:77.4126 }; resolve(userLocation); }
+  });
+}
+
+function reverseGeocode(lat, lng) {
+  return fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14`)
+    .then(r=>r.json()).then(d=>d.display_name.split(',').slice(0,3).join(','))
+    .catch(()=>`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+}
+
+function distKm(lat1,lng1,lat2,lng2) {
+  const R=6371,dLat=(lat2-lat1)*Math.PI/180,dLng=(lng2-lng1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+// ====================== NAV ======================
+const allPages = ['landing','feed','map','create','detail','complaints','govt-post','admin'];
+function navigate(page) {
+  allPages.forEach(p => document.getElementById('page-'+p)?.classList.remove('active'));
+  document.getElementById('page-'+page)?.classList.add('active');
+  const navIds = ['feed','map','create','complaints','govt-post','admin'];
+  navIds.forEach(p => {
+    const d = document.getElementById('nav-'+p);
+    const m = document.getElementById('mob-'+p.replace('-',''));
+    if (d) d.classList.toggle('active', p===page);
+    if (m) { m.classList.toggle('bg-blue-100',p===page); m.classList.toggle('text-blue-800',p===page); m.classList.toggle('text-slate-500',p!==page); }
+  });
+  if (page==='feed')        initFeedPage();
+  else if (page==='map')         initMapPage();
+  else if (page==='create')      initCreatePage();
+  else if (page==='admin')       initAdminPage();
+  else if (page==='complaints')  initComplaintsPage();
+  else if (page==='govt-post')   initGovtPostPage();
+  window.scrollTo(0,0);
+}
+
+// ====================== LEAFLET HELPERS ======================
+function makeMarkerIcon(urgency) {
+  const c={high:'#ba1a1a',medium:'#e8a400',low:'#005249',resolved:'#486176'}[urgency]||'#e8a400';
+  return L.divIcon({ className:'', iconSize:[36,36], iconAnchor:[18,18],
+    html:`<div style="width:36px;height:36px;border-radius:50%;background:${c};border:3px solid white;box-shadow:0 4px 12px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center"><div style="width:10px;height:10px;background:white;border-radius:50%;opacity:.9"></div></div>` });
+}
+function makeUserIcon() {
+  return L.divIcon({ className:'', iconSize:[44,44], iconAnchor:[22,22],
+    html:`<div style="position:relative;width:44px;height:44px;display:flex;align-items:center;justify-content:center"><div style="position:absolute;width:44px;height:44px;border-radius:50%;background:rgba(0,71,141,.2);animation:pulseRing 2s ease-out infinite"></div><div style="width:16px;height:16px;border-radius:50%;background:#00478d;border:3px solid white;box-shadow:0 4px 8px rgba(0,0,0,.2);z-index:1"></div></div>` });
+}
+function buildPopupHTML(issue) {
+  return `<div style="font-family:Inter,sans-serif;padding:4px;min-width:200px"><div style="font-weight:800;font-family:Manrope,sans-serif;font-size:14px;margin-bottom:4px">${issue.title}</div><div style="font-size:11px;color:#727783;margin-bottom:8px">${issue.category} · ${issue.status}</div><button onclick="openDetailFromMap('${issue.id}')" style="width:100%;background:linear-gradient(135deg,#00478d,#005eb8);color:white;border:none;border-radius:10px;padding:8px;font-weight:700;font-size:12px;cursor:pointer">View Details</button></div>`;
+}
+
+// ====================== FEED ======================
+async function initFeedPage() {
+  if (!currentUser) { openAuthModal('citizen'); return; }
+  if (!userLocation) await getUserLocation();
+  const locText = await reverseGeocode(userLocation.lat, userLocation.lng).catch(()=>'Your Area');
+  document.getElementById('feed-location-text').textContent = locText;
+  document.getElementById('feed-list').innerHTML = renderSkeletons(3);
+  await loadIssues();
+  renderFeedList(currentFeedTab);
+  initFeedMap();
+  updateWeeklyImpact();
+}
+
+function switchFeedTab(tab) {
+  currentFeedTab = tab;
+  ['nearby','trending','urgent'].forEach(t => {
+    const btn = document.getElementById('tab-'+t);
+    if (t===tab) { btn.style.background='#005eb8'; btn.style.color='#fff'; }
+    else { btn.style.background=''; btn.style.color=''; }
+  });
+  renderFeedList(tab);
+}
+
+function renderSkeletons(n) {
+  return Array.from({length:n},()=>`<div class="bg-surface-container-lowest rounded-3xl overflow-hidden" style="box-shadow:0 4px 24px rgba(0,0,0,.04)"><div class="p-5 pb-0 flex items-center gap-3"><div class="w-9 h-9 rounded-full bg-surface-container-high animate-pulse"></div><div class="flex-1 space-y-1"><div class="h-3 bg-surface-container-high rounded animate-pulse w-1/3"></div><div class="h-2 bg-surface-container-high rounded animate-pulse w-1/4 mt-1"></div></div></div><div class="p-5"><div class="h-44 bg-surface-container-high rounded-2xl animate-pulse mb-4"></div><div class="h-4 bg-surface-container-high rounded animate-pulse w-3/4 mb-2"></div><div class="h-3 bg-surface-container-high rounded animate-pulse w-full"></div></div></div>`).join('');
+}
+
+function renderFeedList(tab) {
+  let sorted = [...issues];
+  if (tab==='nearby') sorted.sort((a,b)=>(a.distanceKm||99)-(b.distanceKm||99));
+  else if (tab==='trending') sorted.sort((a,b)=>(b.reactions.seen+b.reactions.serious*2)-(a.reactions.seen+a.reactions.serious*2));
+  else if (tab==='urgent') sorted=sorted.filter(i=>i.urgency==='high'&&i.status!=='Resolved');
+
+  const el = document.getElementById('feed-list');
+  if (sorted.length===0) { el.innerHTML='<div class="text-center py-16 text-outline"><span class="material-symbols-outlined text-5xl block mb-3">inbox</span><p class="font-semibold">No issues found</p></div>'; return; }
+
+  el.innerHTML = sorted.map(issue => {
+    const dist  = issue.distanceKm!=null ? issue.distanceKm+'km' : '?';
+    const ago   = timeAgo(issue.date);
+    const urgencyClass = issue.urgency==='high'?'status-reported':issue.urgency==='medium'?'status-inprogress':'status-resolved';
+    const urgencyLabel = issue.urgency==='high'?'High Urgency':issue.urgency==='medium'?'Medium':'Low';
+    const iSeen    = !!myReactions[reactionKey(issue.id,'seen')];
+    const iSerious = !!myReactions[reactionKey(issue.id,'serious')];
+    const seenStyle    = iSeen    ? 'background:#d6e3ff;color:#001b3d' : 'background:rgba(225,226,234,.5)';
+    const seriousStyle = iSerious ? 'background:#ffdad6;color:#93000a' : 'background:rgba(225,226,234,.5)';
+    const photoHtml = issue.photoUrl ? `<img src="${issue.photoUrl}" class="w-full h-full object-cover" alt="issue"/>` : `<span class="material-symbols-outlined text-6xl text-outline/20">image_not_supported</span>`;
+
+    // Resolution update badge
+    const updates = govtUpdates.filter(u => u.issueId === issue.id);
+    const resolvedBadge = updates.length > 0 ? `<div class="mt-3 flex items-center gap-2 px-3 py-2 rounded-xl" style="background:#d8f3dc"><span class="material-symbols-outlined text-sm" style="color:#1a3a2a;font-variation-settings:'FILL' 1">verified</span><span class="text-xs font-bold" style="color:#1a3a2a">${updates[updates.length-1].dept} posted an update</span></div>` : '';
+
+    return `<article class="group relative bg-surface-container-lowest rounded-3xl overflow-hidden card-hover fade-in" style="box-shadow:0 4px 24px rgba(0,0,0,.04)">
+      <div class="absolute top-4 right-4 z-10"><span class="status-badge ${urgencyClass} glass">${urgencyLabel}</span></div>
+      <div class="p-5 pb-0 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full btn-gradient flex items-center justify-center text-white font-bold text-sm flex-shrink-0">${issue.reporter[0].toUpperCase()}</div>
+          <div><h3 class="font-bold text-on-surface text-sm">${issue.reporter}</h3><p class="text-xs text-outline mt-0.5">${ago}</p></div>
+        </div>
+        <div class="text-right"><span class="text-xs font-semibold text-primary">${issue.location}</span><span class="block text-xs text-outline">${dist} away</span></div>
+      </div>
+      <div class="p-5">
+        <div class="relative rounded-2xl overflow-hidden mb-4 bg-surface-container-high flex items-center justify-center" style="height:180px">
+          ${photoHtml}
+          <div class="absolute bottom-3 left-3"><span class="glass px-2 py-1 rounded-lg text-xs font-bold text-primary">${issue.status}</span></div>
+        </div>
+        <h2 class="text-lg font-headline font-bold text-on-surface mb-2 tracking-tight">${issue.title}</h2>
+        <p class="text-on-surface-variant text-sm leading-relaxed line-clamp-2">${issue.desc}</p>
+        ${resolvedBadge}
+      </div>
+      <div class="px-5 py-3 flex gap-3" style="background:#f2f3fb">
+        <button id="feed-seen-${issue.id}" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all" style="${seenStyle}" onclick="toggleReact('${issue.id}','seen')">
+          <span class="material-symbols-outlined text-sm" style="font-variation-settings:'FILL' ${iSeen?1:0}">check_circle</span>
+          <span class="react-count">${issue.reactions.seen}</span> Seen
+        </button>
+        <button id="feed-serious-${issue.id}" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all" style="${seriousStyle}" onclick="toggleReact('${issue.id}','serious')">
+          <span class="material-symbols-outlined text-sm" style="font-variation-settings:'FILL' ${iSerious?1:0}">warning</span>
+          <span class="react-count">${issue.reactions.serious}</span> Serious
+        </button>
+        <button class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ml-auto" style="background:rgba(0,71,141,.08);color:#00478d" onclick="openDetail('${issue.id}')">
+          Details <span class="material-symbols-outlined text-sm">arrow_forward</span>
+        </button>
+      </div>
+    </article>`;
+  }).join('');
+  document.getElementById('feed-map-count').textContent = `Showing ${sorted.length} active incidents in your 10km radius.`;
+}
+
+// ── Toggle react (API-backed, toggle second click deselects) ────────────────
+async function toggleReact(issueId, type) {
+  if (!currentUser) { showToast('Please log in to react'); return; }
+  const key = reactionKey(issueId, type);
+  const wasActive = !!myReactions[key];
+  const issue = issues.find(i=>i.id===issueId);
+  if (!issue) return;
+
+  // Optimistic
+  if (wasActive) { issue.reactions[type]=Math.max(0,issue.reactions[type]-1); delete myReactions[key]; }
+  else { issue.reactions[type]++; myReactions[key]=true; if(!wasActive) addPoints(2); }
+  saveMyReactions();
+  _updateReactBtn(issueId, type, !wasActive, issue.reactions[type]);
+  if (currentDetailId===issueId) _refreshDetailReactions(issue);
+
+  try {
+    const res = await apiFetch(`/issues/${issueId}/react`, { method:'POST', body:JSON.stringify({type, userId:currentUser}) });
+    issue.reactions.seen    = res.reactionCounts.seen;
+    issue.reactions.serious = res.reactionCounts.serious;
+    const nowActive = res.action==='added';
+    if (nowActive) myReactions[key]=true; else delete myReactions[key];
+    saveMyReactions();
+    _updateReactBtn(issueId, type, nowActive, issue.reactions[type]);
+    if (currentDetailId===issueId) _refreshDetailReactions(issue);
+  } catch(err) {
+    if (wasActive) { issue.reactions[type]++; myReactions[key]=true; }
+    else { issue.reactions[type]=Math.max(0,issue.reactions[type]-1); delete myReactions[key]; }
+    saveMyReactions();
+    _updateReactBtn(issueId, type, wasActive, issue.reactions[type]);
+    showToast('Reaction failed — is the server running?');
+  }
+}
+
+function _updateReactBtn(issueId, type, active, count) {
+  const btn = document.getElementById(`feed-${type}-${issueId}`);
+  if (btn) {
+    btn.style.cssText = active ? (type==='seen'?'background:#d6e3ff;color:#001b3d':'background:#ffdad6;color:#93000a') : 'background:rgba(225,226,234,.5)';
+    const icon = btn.querySelector('.material-symbols-outlined');
+    const cnt  = btn.querySelector('.react-count');
+    if (icon) icon.style.fontVariationSettings=`'FILL' ${active?1:0}`;
+    if (cnt)  cnt.textContent = count;
+  }
+  if (currentDetailId===issueId) {
+    const c = document.getElementById(`detail-${type}-count`);
+    if (c) c.textContent = count;
+    const card = document.getElementById(`detail-${type}-card`);
+    if (card) card.style.background = active?(type==='seen'?'#d6e3ff':'#ffdad6'):'';
+  }
+}
+function _refreshDetailReactions(issue) {
+  document.getElementById('detail-seen-count').textContent    = issue.reactions.seen;
+  document.getElementById('detail-serious-count').textContent = issue.reactions.serious;
+}
+
+function initFeedMap() {
+  if (!userLocation) return;
+  if (feedMap) { feedMap.remove(); feedMap=null; }
+  feedMap = L.map('leaflet-feed-map',{zoomControl:false,attributionControl:false}).setView([userLocation.lat,userLocation.lng],13);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{attribution:''}).addTo(feedMap);
+  L.marker([userLocation.lat,userLocation.lng],{icon:makeUserIcon()}).addTo(feedMap);
+  issues.forEach(i => L.marker([i.lat,i.lng],{icon:makeMarkerIcon(i.urgency)}).addTo(feedMap).on('click',()=>openDetail(i.id)));
+}
+
+function updateWeeklyImpact() {
+  const total=issues.length, resolved=issues.filter(i=>i.status==='Resolved').length;
+  const pct=total>0?Math.round(resolved/total*100):0;
+  document.getElementById('weekly-fixed').textContent=resolved;
+  document.getElementById('weekly-pct').textContent=pct+'% of reported issues solved.';
+  setTimeout(()=>{ document.getElementById('weekly-bar').style.width=pct+'%'; },200);
+}
+
+// ====================== MAP ======================
+async function initMapPage() {
+  if (!currentUser) { openAuthModal(); return; }
+  if (!userLocation) await getUserLocation();
+  if (issues.length===0) await loadIssues();
+  setTimeout(()=>{
+    if (mainMap) { mainMap.remove(); mainMap=null; }
+    mainMap = L.map('leaflet-main-map',{zoomControl:false}).setView([userLocation.lat,userLocation.lng],14);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(mainMap);
+    L.marker([userLocation.lat,userLocation.lng],{icon:makeUserIcon()}).addTo(mainMap).bindPopup('<b>You are here</b>');
+    L.circle([userLocation.lat,userLocation.lng],{radius:10000,color:'#00478d',fillColor:'#d6e3ff',fillOpacity:.08,weight:1,dashArray:'6'}).addTo(mainMap);
+    renderMapMarkers();
+    document.getElementById('map-zoom-in').onclick  = ()=>mainMap.zoomIn();
+    document.getElementById('map-zoom-out').onclick = ()=>mainMap.zoomOut();
+    ['filter-high','filter-medium','filter-low'].forEach(id=>document.getElementById(id).onchange=renderMapMarkers);
+  },100);
+}
+
+function renderMapMarkers() {
+  if (!mainMap) return;
+  mainMarkers.forEach(m=>mainMap.removeLayer(m)); mainMarkers=[];
+  const showH=document.getElementById('filter-high').checked;
+  const showM=document.getElementById('filter-medium').checked;
+  const showL=document.getElementById('filter-low').checked;
+  issues.forEach(issue=>{
+    if (mapFilterCat!=='all'&&issue.category!==mapFilterCat) return;
+    if (issue.urgency==='high'&&!showH) return;
+    if (issue.urgency==='medium'&&!showM) return;
+    if (issue.urgency==='low'&&!showL) return;
+    const m = L.marker([issue.lat,issue.lng],{icon:makeMarkerIcon(issue.urgency)}).addTo(mainMap).on('click',()=>showMapPanel(issue));
+    mainMarkers.push(m);
+  });
+}
+
+function toggleMapFilter(cat) {
+  mapFilterCat=cat;
+  document.querySelectorAll('.map-filter-btn').forEach(b=>{
+    const a=b.dataset.filter===cat; b.style.background=a?'#d6e3ff':''; b.style.color=a?'#001b3d':'';
+  });
+  renderMapMarkers();
+}
+function resetMapFilters() {
+  mapFilterCat='all';
+  ['filter-high','filter-medium','filter-low'].forEach(id=>document.getElementById(id).checked=true);
+  document.querySelectorAll('.map-filter-btn').forEach(b=>{b.style.background='';b.style.color='';});
+  renderMapMarkers();
+}
+function showMapPanel(issue) {
+  document.getElementById('map-detail-panel').classList.remove('hidden');
+  document.getElementById('map-panel-title').textContent=issue.title;
+  document.getElementById('map-panel-desc').textContent=issue.desc;
+  const c={high:'#ba1a1a',medium:'#e8a400',low:'#005249'}[issue.urgency]||'#ba1a1a';
+  document.getElementById('map-panel-urgency-dot').style.background=c;
+  document.getElementById('map-panel-urgency').textContent=issue.urgency.charAt(0).toUpperCase()+issue.urgency.slice(1);
+  const dist=userLocation?distKm(userLocation.lat,userLocation.lng,issue.lat,issue.lng).toFixed(1)+'km':'?';
+  document.getElementById('map-panel-dist').textContent=dist;
+  document.getElementById('map-panel-view').onclick=()=>openDetail(issue.id);
+  document.getElementById('map-panel-img').innerHTML=issue.photoUrl?`<img src="${issue.photoUrl}" class="w-full h-full object-cover" alt=""/>`:`<span class="material-symbols-outlined text-5xl text-outline/20">image_not_supported</span>`;
+}
+function closeMapPanel() { document.getElementById('map-detail-panel').classList.add('hidden'); }
+function centerMapOnUser() { if(mainMap&&userLocation) mainMap.setView([userLocation.lat,userLocation.lng],14); }
+function openDetailFromMap(id) { openDetail(id); }
+
+// ====================== DETAIL ======================
+async function openDetail(id) {
+  let issue = issues.find(i=>i.id===id);
+  if (!issue) {
+    try { const d=await apiFetch('/issues/'+id); issue=normalise(d.data); issues.push(issue); }
+    catch(e) { showToast('Could not load issue'); return; }
+  }
+  currentDetailId = id;
+  _renderDetailPage(issue);
+  navigate('detail');
+  try {
+    const fresh = normalise((await apiFetch('/issues/'+id)).data);
+    const idx=issues.findIndex(i=>i.id===id);
+    if (idx!==-1) issues[idx]=fresh;
+    _renderDetailPage(fresh);
+  } catch(_) {}
+}
+
+function _renderDetailPage(issue) {
+  document.getElementById('detail-title').textContent    = issue.title;
+  document.getElementById('detail-id').textContent       = '#'+issue.id;
+  document.getElementById('detail-location').textContent = issue.location;
+  document.getElementById('detail-desc').textContent     = issue.desc;
+  document.getElementById('detail-category').textContent = issue.category;
+  document.getElementById('detail-date').textContent     = new Date(issue.date).toLocaleDateString();
+  document.getElementById('detail-priority').textContent = issue.urgency.charAt(0).toUpperCase()+issue.urgency.slice(1);
+  document.getElementById('detail-reporter').textContent = issue.reporter;
+  document.getElementById('detail-reporter-avatar').textContent = issue.reporter[0].toUpperCase();
+
+  const iSeen=!!myReactions[reactionKey(issue.id,'seen')];
+  const iSerious=!!myReactions[reactionKey(issue.id,'serious')];
+  document.getElementById('detail-seen-count').textContent    = issue.reactions.seen;
+  document.getElementById('detail-serious-count').textContent = issue.reactions.serious;
+  const sc=document.getElementById('detail-seen-card'); if(sc) sc.style.background=iSeen?'#d6e3ff':'';
+  const ssc=document.getElementById('detail-serious-card'); if(ssc) ssc.style.background=iSerious?'#ffdad6':'';
+
+  const nearCount=userLocation?issues.filter(i=>distKm(userLocation.lat,userLocation.lng,i.lat,i.lng)<=2).length:0;
+  document.getElementById('detail-near-count').textContent=nearCount;
+
+  const badge=document.getElementById('detail-status-badge');
+  badge.className='status-badge glass';
+  const smap={Reported:'status-reported',Verified:'status-verified','In Progress':'status-inprogress',Resolved:'status-resolved'};
+  badge.classList.add(smap[issue.status]||'status-reported');
+  badge.textContent=issue.status;
+
+  renderTimeline(issue.status);
+
+  const emptyBox=document.getElementById('detail-resolution-empty');
+  const contentBox=document.getElementById('detail-resolution-content');
+  if (issue.resolutionNote) { emptyBox.classList.add('hidden'); contentBox.classList.remove('hidden'); document.getElementById('detail-resolution-note').textContent=issue.resolutionNote; }
+  else { emptyBox.classList.remove('hidden'); contentBox.classList.add('hidden'); }
+
+  // Govt update posts
+  const updates = govtUpdates.filter(u=>u.issueId===issue.id);
+  const updSection = document.getElementById('detail-updates-section');
+  const updList    = document.getElementById('detail-updates-list');
+  if (updates.length > 0) {
+    updSection.classList.remove('hidden');
+    updList.innerHTML = updates.map(u=>`
+      <div class="flex gap-3 p-4 rounded-2xl" style="background:#d8f3dc">
+        <div class="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center govt-gradient"><span class="material-symbols-outlined text-white text-lg" style="font-variation-settings:'FILL' 1">verified_user</span></div>
+        <div class="flex-1">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-bold uppercase tracking-wider" style="color:#1a3a2a">${u.dept}</span>
+            <span class="text-xs text-outline">${timeAgo(u.date)}</span>
+          </div>
+          ${u.photoUrl?`<img src="${u.photoUrl}" class="w-full rounded-xl object-cover mb-2" style="max-height:180px" alt="resolution"/>`:''}
+          <p class="text-sm leading-relaxed" style="color:#1a3a2a">${u.note}</p>
+          ${u.workBy?`<p class="text-xs mt-1" style="color:#2d6a4f">Work done by: ${u.workBy}</p>`:''}
+        </div>
+      </div>`).join('');
+  } else updSection.classList.add('hidden');
+
+  // Panel visibility
+  document.getElementById('detail-govt-panel').classList.toggle('hidden', !isGovt);
+  document.getElementById('detail-admin-panel').classList.toggle('hidden', !isAdmin);
+
+  if (isGovt) { document.getElementById('detail-status-select').value = issue.status; document.getElementById('detail-resolution-input').value = issue.resolutionNote||''; }
+  if (isAdmin) { document.getElementById('detail-admin-status-select').value = issue.status; document.getElementById('detail-admin-resolution-input').value = issue.resolutionNote||''; }
+
+  const imgBg=document.getElementById('detail-img-bg');
+  imgBg.innerHTML=issue.photoUrl?`<img src="${issue.photoUrl}" class="w-full h-full object-cover" alt="issue"/>`:`<span class="material-symbols-outlined text-7xl text-outline/20">image_not_supported</span>`;
+
+  setTimeout(()=>{
+    if (detailMap) { detailMap.remove(); detailMap=null; }
+    detailMap=L.map('detail-map',{zoomControl:false,attributionControl:false,dragging:false,scrollWheelZoom:false}).setView([issue.lat,issue.lng],15);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(detailMap);
+    L.marker([issue.lat,issue.lng],{icon:makeMarkerIcon(issue.urgency)}).addTo(detailMap);
+  },100);
+}
+
+function renderTimeline(status) {
+  const steps=['Reported','Verified','In Progress','Resolved'],icons=['flag','verified','engineering','done_all'];
+  const ci=steps.indexOf(status);
+  document.getElementById('detail-timeline').innerHTML='<div class="timeline-line"></div>'+steps.map((s,i)=>{
+    const done=i<=ci;
+    return `<div class="relative z-10 flex flex-col items-center gap-2" style="width:25%">
+      <div class="w-10 h-10 rounded-full flex items-center justify-center shadow" style="background:${done?'#00478d':'#e1e2ea'};color:${done?'#fff':'#727783'}${i===ci?';outline:3px solid #d6e3ff':''}">
+        <span class="material-symbols-outlined text-lg">${icons[i]}</span>
+      </div>
+      <div class="text-center"><p class="font-headline font-bold text-xs">${s}</p><p class="text-xs text-outline">${done?(i<ci?'✓':'Active'):'Pending'}</p></div>
+    </div>`;
+  }).join('');
+}
+
+function reactIssue(type) { if (currentDetailId) toggleReact(currentDetailId, type); }
+
+async function updateIssueStatus() {
+  // Govt official update
+  const issue=issues.find(i=>i.id===currentDetailId); if (!issue) return;
+  const ns=document.getElementById('detail-status-select').value;
+  const note=document.getElementById('detail-resolution-input').value;
+  try {
+    const d=await apiFetch('/issues/'+currentDetailId,{method:'PATCH',body:JSON.stringify({status:ns,resolutionNote:note})});
+    const updated=normalise(d.data);
+    const idx=issues.findIndex(i=>i.id===currentDetailId); if(idx!==-1) issues[idx]=updated;
+    _renderDetailPage(updated);
+    addPoints(20);
+    showToast('Status updated to: '+ns+' ✅');
+  } catch(e) { showToast('Update failed: '+e.message); }
+}
+
+async function updateIssueStatusAdmin() {
+  const ns=document.getElementById('detail-admin-status-select').value;
+  const note=document.getElementById('detail-admin-resolution-input').value;
+  try {
+    const d=await apiFetch('/issues/'+currentDetailId,{method:'PATCH',body:JSON.stringify({status:ns,resolutionNote:note})});
+    const updated=normalise(d.data);
+    const idx=issues.findIndex(i=>i.id===currentDetailId); if(idx!==-1) issues[idx]=updated;
+    _renderDetailPage(updated); showToast('Admin updated: '+ns+' ✅');
+  } catch(e) { showToast('Update failed: '+e.message); }
+}
+
+function prefillGovtPost(id) { govtPostPrefillId=id; }
+
+// ====================== CREATE REPORT ======================
+async function initCreatePage() {
+  if (!currentUser) { openAuthModal(); return; }
+  if (!userLocation) await getUserLocation();
+  updateCreateLocation();
+}
+
+async function updateCreateLocation() {
+  document.getElementById('loc-dot').style.background='#e8a400';
+  const loc=await getUserLocation();
+  const text=await reverseGeocode(loc.lat,loc.lng).catch(()=>`${loc.lat.toFixed(4)},${loc.lng.toFixed(4)}`);
+  document.getElementById('create-location-text').textContent=text;
+  document.getElementById('create-lat').value=loc.lat;
+  document.getElementById('create-lng').value=loc.lng;
+  document.getElementById('loc-dot').style.background='#22c55e';
+}
+
+function refreshLocation() { updateCreateLocation(); }
+
+function previewPhoto(e) {
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const p=document.getElementById('photo-preview'); p.src=ev.target.result; p.classList.remove('hidden');
+    document.getElementById('upload-placeholder').classList.add('hidden');
+    document.getElementById('photo-badge').classList.remove('hidden');
+    document.getElementById('photo-badge').classList.add('flex');
+  };
+  reader.readAsDataURL(file);
+}
+
+function updateWordCount(el) { document.getElementById('word-count').textContent=el.value.length+' / 500'; }
+function updateCatIcon(sel) {
+  const catIcons={Infrastructure:'construction',Sanitation:'delete',Utilities:'water_drop',Lighting:'lightbulb',Vandalism:'format_paint',Other:'report'};
+  document.getElementById('cat-icon').textContent=catIcons[sel.value]||'category';
+  document.getElementById('cat-label').textContent=sel.value||'None';
+}
+
+async function submitReport(e) {
+  e.preventDefault();
+  const title=document.getElementById('issue-title').value.trim();
+  const desc=document.getElementById('issue-desc').value.trim();
+  const cat=document.getElementById('issue-category').value;
+  const lat=parseFloat(document.getElementById('create-lat').value)||userLocation?.lat;
+  const lng=parseFloat(document.getElementById('create-lng').value)||userLocation?.lng;
+  if (!title||!desc||!cat) { showToast('Please fill all fields!'); return; }
+  if (!lat||!lng) { showToast('Location not detected.'); return; }
+
+  const btn=e.target.querySelector('button[type=submit]');
+  btn.disabled=true;
+  btn.innerHTML='<span class="material-symbols-outlined" style="animation:spin 1s linear infinite">progress_activity</span> Posting…';
+
+  try {
+    let photoUrl='';
+    const pi=document.getElementById('photo-input');
+    if (pi.files[0]) {
+      photoUrl=await new Promise(r=>{const rd=new FileReader();rd.onload=ev=>r(ev.target.result);rd.readAsDataURL(pi.files[0]);});
+    }
+    const data=await apiFetch('/issues',{method:'POST',body:JSON.stringify({
+      title,desc,category:cat,lat,lng,
+      locationText:document.getElementById('create-location-text').textContent,
+      reporter:currentUser,photoUrl
+    })});
+    const newIssue=normalise(data.data);
+    issues.unshift(newIssue);
+    addPoints(10);
+    document.getElementById('create-form').reset();
+    document.getElementById('photo-preview').classList.add('hidden');
+    document.getElementById('upload-placeholder').classList.remove('hidden');
+    document.getElementById('photo-badge').classList.add('hidden');
+    document.getElementById('cat-icon').textContent='category';
+    document.getElementById('cat-label').textContent='None';
+    showToast('Issue posted! +10 pts 🎉');
+    setTimeout(()=>openDetail(newIssue.id),600);
+  } catch(err) { showToast('Failed: '+err.message); }
+  finally { btn.disabled=false; btn.innerHTML='Post Issue <span class="material-symbols-outlined">send</span>'; }
+}
+
+// ====================== COMPLAINTS (Govt) ======================
+async function initComplaintsPage() {
+  if (!isGovt&&!isAdmin) { navigate('feed'); return; }
+  if (issues.length===0) await loadIssues();
+  document.getElementById('complaints-dept-label').textContent = currentProfile?.dept ? `${currentProfile.dept} · ${currentProfile.area||''}` : 'All jurisdictions';
+  renderComplaints();
+}
+
+function complaintFilter(val) {
+  complaintFilterVal=val;
+  document.querySelectorAll('.complaint-filter-btn').forEach(b=>{
+    const a=b.dataset.f===val;
+    b.style.background=a?'#d8f3dc':''; b.style.color=a?'#1a3a2a':'';
+  });
+  renderComplaints();
+}
+
+function renderComplaints() {
+  let list=[...issues].filter(i=>i.status!=='Resolved');
+  if (complaintFilterVal==='high') list=list.filter(i=>i.urgency==='high');
+  else if (['Reported','In Progress','Verified'].includes(complaintFilterVal)) list=list.filter(i=>i.status===complaintFilterVal);
+  list.sort((a,b)=>{ const u={high:3,medium:2,low:1}; return (u[b.urgency]||0)-(u[a.urgency]||0)||new Date(b.date)-new Date(a.date); });
+
+  document.getElementById('c-open').textContent    = issues.filter(i=>i.status!=='Resolved').length;
+  document.getElementById('c-high').textContent    = issues.filter(i=>i.urgency==='high'&&i.status!=='Resolved').length;
+  document.getElementById('c-inprog').textContent  = issues.filter(i=>i.status==='In Progress').length;
+  document.getElementById('c-resolved').textContent= govtUpdates.filter(u=>u.by===currentUser).length;
+
+  const el=document.getElementById('complaints-list');
+  if (list.length===0) { el.innerHTML='<div class="text-center py-16 text-outline"><span class="material-symbols-outlined text-5xl block mb-3">check_circle</span><p class="font-semibold">No open complaints</p></div>'; return; }
+  const smap={Reported:'status-reported',Verified:'status-verified','In Progress':'status-inprogress',Resolved:'status-resolved'};
+  el.innerHTML=list.map(issue=>`
+    <div class="bg-surface-container-lowest rounded-2xl overflow-hidden card-hover editorial-shadow complaint-${issue.urgency}" style="display:flex;align-items:stretch">
+      <div class="flex-1 p-5">
+        <div class="flex items-start justify-between gap-3 mb-2">
+          <h3 class="font-headline font-bold text-base text-on-surface leading-tight">${issue.title}</h3>
+          <span class="status-badge ${smap[issue.status]||'status-reported'} flex-shrink-0">${issue.status}</span>
+        </div>
+        <p class="text-sm text-on-surface-variant line-clamp-2 mb-3">${issue.desc}</p>
+        <div class="flex items-center gap-3 flex-wrap">
+          <span class="text-xs font-medium text-outline flex items-center gap-1"><span class="material-symbols-outlined text-sm">location_on</span>${issue.location}</span>
+          <span class="text-xs font-medium text-outline flex items-center gap-1"><span class="material-symbols-outlined text-sm">schedule</span>${timeAgo(issue.date)}</span>
+          <span class="text-xs font-medium text-outline">${issue.category}</span>
+          <span class="text-xs font-bold ${issue.urgency==='high'?'text-error':issue.urgency==='medium'?'text-yellow-600':'text-tertiary'}">● ${issue.urgency.toUpperCase()}</span>
+        </div>
+      </div>
+      <div class="flex flex-col gap-2 p-4 justify-center flex-shrink-0" style="background:#f9fafb;border-left:1px solid rgba(194,198,212,.2)">
+        <button onclick="openDetail('${issue.id}')" class="px-4 py-2 rounded-xl text-xs font-bold btn-gradient text-white active:scale-95">View</button>
+        <button onclick="closeProfile();navigate('govt-post');prefillGovtPost('${issue.id}')" class="px-4 py-2 rounded-xl text-xs font-bold active:scale-95" style="background:#d8f3dc;color:#1a3a2a">Post Fix</button>
+        <button onclick="quickVerify('${issue.id}')" class="px-4 py-2 rounded-xl text-xs font-bold active:scale-95" style="background:#cbe6ff;color:#30495d">Verify</button>
+      </div>
+    </div>`).join('');
+}
+
+async function quickVerify(id) {
+  try {
+    const d=await apiFetch('/issues/'+id,{method:'PATCH',body:JSON.stringify({status:'Verified'})});
+    const updated=normalise(d.data);
+    const idx=issues.findIndex(i=>i.id===id); if(idx!==-1) issues[idx]=updated;
+    renderComplaints(); addPoints(5);
+    showToast('Issue verified ✓');
+  } catch(e) { showToast('Error: '+e.message); }
+}
+
+// ====================== GOVT POST UPDATE ======================
+function initGovtPostPage() {
+  if (!isGovt&&!isAdmin) { navigate('feed'); return; }
+  // Populate issue dropdown
+  const sel=document.getElementById('gp-issue-select');
+  const open=issues.filter(i=>i.status!=='Resolved');
+  sel.innerHTML='<option value="">Select an open issue…</option>'+open.map(i=>`<option value="${i.id}">${i.title} (#${i.id.slice(-6)})</option>`).join('');
+  // Pre-fill if routed from complaints/detail
+  if (govtPostPrefillId) {
+    sel.value=govtPostPrefillId;
+    previewLinkedIssue();
+    govtPostPrefillId=null;
+  }
+}
+
+function previewLinkedIssue() {
+  const id=document.getElementById('gp-issue-select').value;
+  const prev=document.getElementById('gp-linked-preview');
+  if (!id) { prev.classList.add('hidden'); return; }
+  const issue=issues.find(i=>i.id===id);
+  if (!issue) { prev.classList.add('hidden'); return; }
+  prev.classList.remove('hidden');
+  document.getElementById('gp-linked-title').textContent=issue.title;
+  document.getElementById('gp-linked-meta').textContent=`${issue.category} · ${issue.status} · ${issue.location}`;
+}
+
+function previewGovtPhoto(e) {
+  const file=e.target.files[0]; if (!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const p=document.getElementById('gp-photo-preview'); p.src=ev.target.result; p.classList.remove('hidden');
+    document.getElementById('gp-photo-placeholder').classList.add('hidden');
+  };
+  reader.readAsDataURL(file);
+}
+
+async function postGovtUpdate() {
+  const issueId=document.getElementById('gp-issue-select').value;
+  if (!issueId) { showToast('Select an issue first!'); return; }
+  const note=document.getElementById('gp-note').value.trim();
+  if (!note) { showToast('Please add a resolution note!'); return; }
+  const status=document.getElementById('gp-status').value;
+  const workBy=document.getElementById('gp-workby').value.trim();
+
+  let photoUrl='';
+  const pi=document.getElementById('gp-photo');
+  if (pi.files[0]) {
+    photoUrl=await new Promise(r=>{const rd=new FileReader();rd.onload=ev=>r(ev.target.result);rd.readAsDataURL(pi.files[0]);});
+  }
+
+  const btn=document.querySelector('#page-govt-post button[onclick="postGovtUpdate()"]');
+  btn.disabled=true; btn.innerHTML='<span class="material-symbols-outlined" style="animation:spin 1s linear infinite">progress_activity</span> Publishing…';
+
+  try {
+    // Update issue status on backend
+    const d=await apiFetch('/issues/'+issueId,{method:'PATCH',body:JSON.stringify({status,resolutionNote:note})});
+    const updated=normalise(d.data);
+    const idx=issues.findIndex(i=>i.id===issueId); if(idx!==-1) issues[idx]=updated;
+
+    // Save update post locally
+    const update = {
+      id: Date.now().toString(),
+      issueId, dept: currentProfile?.dept||currentUser,
+      by: currentUser, note, workBy, photoUrl, status,
+      date: new Date().toISOString()
+    };
+    govtUpdates.push(update);
+    saveGovtUpdates();
+    addPoints(30);
+
+    // Reset form
+    document.getElementById('gp-issue-select').value='';
+    document.getElementById('gp-note').value='';
+    document.getElementById('gp-workby').value='';
+    document.getElementById('gp-photo').value='';
+    document.getElementById('gp-photo-preview').classList.add('hidden');
+    document.getElementById('gp-photo-placeholder').classList.remove('hidden');
+    document.getElementById('gp-linked-preview').classList.add('hidden');
+
+    showToast('Update published! Citizens can now see it. +30 pts 🎉');
+    setTimeout(()=>navigate('complaints'),800);
+  } catch(e) { showToast('Failed: '+e.message); }
+  finally { btn.disabled=false; btn.innerHTML='<span class="material-symbols-outlined">verified</span> Publish Official Update'; }
+}
+
+// ====================== ADMIN ======================
+async function initAdminPage() {
+  if (!isAdmin) { navigate('feed'); return; }
+  if (issues.length===0) await loadIssues();
+  adminTab('feed');
+  updateAdminMetrics();
+}
+
+function adminTab(tab) {
+  ['feed','map','analytics','resolve'].forEach(t=>{
+    const el=document.getElementById('admin-tab-'+t);
+    const btn=document.getElementById('admin-nav-'+t);
+    if(el) el.classList.toggle('hidden',t!==tab);
+    if(btn){ btn.classList.toggle('bg-white',t===tab); btn.classList.toggle('text-blue-700',t===tab); btn.classList.toggle('shadow-sm',t===tab); btn.classList.toggle('text-slate-500',t!==tab); }
+  });
+  if(tab==='feed') renderAdminFeed();
+  else if(tab==='map') initAdminMap();
+  else if(tab==='analytics') renderAnalytics();
+  else if(tab==='resolve') renderResolveList();
+}
+
+function adminFilterCat(cat) {
+  adminCatFilter=cat;
+  document.querySelectorAll('.admin-cat-btn').forEach(b=>{
+    const a=b.dataset.cat===cat;
+    b.classList.toggle('bg-primary-fixed',a); b.classList.toggle('text-on-primary-fixed',a);
+    b.classList.toggle('bg-surface-container-highest',!a); b.classList.toggle('text-on-surface-variant',!a);
+  });
+  renderAdminFeed();
+}
+
+function renderAdminFeed() {
+  const search=(document.getElementById('admin-search')?.value||'').toLowerCase();
+  let filtered=issues.filter(i=>{
+    if(adminCatFilter!=='all'&&i.category!==adminCatFilter) return false;
+    if(search&&!i.title.toLowerCase().includes(search)&&!i.desc.toLowerCase().includes(search)) return false;
+    return true;
+  });
+  const grid=document.getElementById('admin-feed-grid');
+  if(!filtered.length){ grid.innerHTML='<div class="col-span-3 text-center py-12 text-outline">No issues found.</div>'; return; }
+  const smap={Reported:'status-reported',Verified:'status-verified','In Progress':'status-inprogress',Resolved:'status-resolved'};
+  grid.innerHTML=filtered.map(i=>`
+    <div class="bg-surface-container-lowest rounded-[1.5rem] overflow-hidden card-hover editorial-shadow">
+      <div class="relative bg-surface-container-high flex items-center justify-center" style="height:160px">
+        ${i.photoUrl?`<img src="${i.photoUrl}" class="w-full h-full object-cover" alt=""/>`:`<span class="material-symbols-outlined text-5xl text-outline/20">image_not_supported</span>`}
+        <span class="absolute top-3 right-3 status-badge ${smap[i.status]||'status-reported'}">${i.status}</span>
+        <span class="absolute bottom-3 left-3 text-xs font-bold text-on-surface glass px-2 py-1 rounded-lg">${i.category}</span>
+      </div>
+      <div class="p-5 space-y-3">
+        <h3 class="text-base font-headline font-bold leading-tight">${i.title}</h3>
+        <p class="text-xs text-slate-500 line-clamp-2">${i.desc}</p>
+        <div class="flex items-center justify-between pt-2" style="border-top:1px solid rgba(194,198,212,.2)">
+          <span class="text-xs text-slate-400">${timeAgo(i.date)}</span>
+          <button class="text-primary font-bold text-xs flex items-center gap-1 hover:underline" onclick="openDetail('${i.id}')">Update <span class="material-symbols-outlined text-sm">arrow_forward</span></button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function updateAdminMetrics() {
+  const total=issues.length, resolved=issues.filter(i=>i.status==='Resolved').length;
+  const urgent=issues.filter(i=>i.urgency==='high'&&i.status!=='Resolved').length;
+  const pct=total>0?Math.round(resolved/total*100):0;
+  document.getElementById('admin-total').textContent=total;
+  document.getElementById('admin-resolved').textContent=resolved;
+  document.getElementById('admin-urgent').textContent=urgent;
+  document.getElementById('admin-urgent-msg').textContent=urgent>0?'Immediate action required':'No urgent issues';
+  document.getElementById('admin-resolved-bar').style.width=pct+'%';
+  const el=document.getElementById('admin-success-rate'); if(el) el.textContent=pct+'% of reports resolved';
+}
+
+function initAdminMap() {
+  if(!userLocation) return;
+  setTimeout(()=>{
+    if(adminMap){adminMap.remove();adminMap=null;}
+    adminMap=L.map('leaflet-admin-map',{zoomControl:true}).setView([userLocation.lat,userLocation.lng],13);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(adminMap);
+    L.marker([userLocation.lat,userLocation.lng],{icon:makeUserIcon()}).addTo(adminMap);
+    issues.forEach(i=>L.marker([i.lat,i.lng],{icon:makeMarkerIcon(i.urgency)}).addTo(adminMap).bindPopup(buildPopupHTML(i),{maxWidth:240}));
+  },100);
+}
+
+function renderAnalytics() {
+  const cats={},statuses={};
+  issues.forEach(i=>{cats[i.category]=(cats[i.category]||0)+1;statuses[i.status]=(statuses[i.status]||0)+1;});
+  const total=issues.length||1;
+  const catC={Infrastructure:'#00478d',Sanitation:'#e8a400',Utilities:'#005249',Lighting:'#005eb8',Vandalism:'#ba1a1a',Other:'#486176'};
+  document.getElementById('analytics-cats').innerHTML=Object.entries(cats).map(([c,n])=>`
+    <div class="space-y-1"><div class="flex justify-between text-sm"><span class="font-medium">${c}</span><span class="font-bold">${n}</span></div>
+    <div class="h-2 bg-surface-container-high rounded-full overflow-hidden"><div class="h-full rounded-full" style="width:${Math.round(n/total*100)}%;background:${catC[c]||'#486176'};transition:width .8s ease"></div></div></div>`).join('');
+  const stC={Reported:'#ba1a1a',Verified:'#486176','In Progress':'#e8a400',Resolved:'#005249'};
+  document.getElementById('analytics-status').innerHTML=Object.entries(statuses).map(([s,n])=>`
+    <div class="space-y-1"><div class="flex justify-between text-sm"><span class="font-medium">${s}</span><span class="font-bold">${n}</span></div>
+    <div class="h-2 bg-surface-container-high rounded-full overflow-hidden"><div class="h-full rounded-full" style="width:${Math.round(n/total*100)}%;background:${stC[s]||'#486176'};transition:width .8s ease"></div></div></div>`).join('');
+}
+
+function renderResolveList() {
+  const pending=issues.filter(i=>i.status!=='Resolved');
+  document.getElementById('resolve-issue-list').innerHTML=pending.map(i=>`
+    <button onclick="selectResolveIssue('${i.id}')" class="w-full text-left p-3 rounded-xl hover:bg-surface-container-high transition-colors text-sm" style="border:1px solid rgba(194,198,212,.3)">
+      <div class="font-semibold">${i.title}</div><div class="text-xs text-outline mt-0.5">#${i.id} · ${i.status}</div>
+    </button>`).join('')||'<p class="text-sm text-outline text-center py-4">All issues resolved! 🎉</p>';
+  updateAdminMetrics();
+}
+
+function selectResolveIssue(id) {
+  document.getElementById('resolve-id').value='#'+id;
+  document.getElementById('resolve-id').dataset.id=id;
+  const issue=issues.find(i=>i.id===id);
+  if(issue) document.getElementById('resolve-note').value=issue.resolutionNote||'';
+}
+
+async function finalizeResolution() {
+  const id=document.getElementById('resolve-id').dataset.id;
+  if(!id){showToast('Select an issue first!');return;}
+  const ns=document.getElementById('resolve-status').value==='Closed - Non Issue'?'Resolved':document.getElementById('resolve-status').value;
+  const note=document.getElementById('resolve-note').value;
+  try {
+    const d=await apiFetch('/issues/'+id,{method:'PATCH',body:JSON.stringify({status:ns,resolutionNote:note})});
+    const updated=normalise(d.data); const idx=issues.findIndex(i=>i.id===id); if(idx!==-1) issues[idx]=updated;
+    updateAdminMetrics(); renderResolveList(); renderAdminFeed();
+    showToast('Issue #'+id+' → '+ns+' ✅');
+  } catch(e){showToast('Update failed: '+e.message);}
+}
+
+// ====================== UTILS ======================
+function timeAgo(dateStr) {
+  const diff=Date.now()-new Date(dateStr).getTime(), mins=Math.floor(diff/60000);
+  if(mins<1) return 'just now'; if(mins<60) return mins+'m ago';
+  if(mins<1440) return Math.floor(mins/60)+'h ago'; return Math.floor(mins/1440)+'d ago';
+}
+
+function showToast(msg) {
+  const t=document.getElementById('toast'); document.getElementById('toast-msg').textContent=msg;
+  t.classList.remove('hidden'); t.style.opacity='1'; t.style.transform='translateY(0)';
+  setTimeout(()=>{t.style.opacity='0';t.style.transform='translateY(-10px)';setTimeout(()=>t.classList.add('hidden'),300);},2800);
+}
+
+function showNotifications() {
+  const urgent=issues.filter(i=>i.urgency==='high'&&i.status==='Reported').length;
+  showToast(urgent>0?urgent+' high urgency issues need attention!':'No new notifications');
+  document.getElementById('notif-dot').classList.add('hidden');
+}
+
+// ====================== INIT ======================
+window.addEventListener('DOMContentLoaded', async ()=>{
+  // Style initial tab btns
+  document.getElementById('tab-nearby').style.cssText='background:#005eb8;color:#fff';
+
+  if (currentUser) {
+    isAdmin=currentRole==='admin'; isGovt=currentRole==='govt';
+    _applyRoleUI();
+    document.getElementById('auth-modal').classList.add('hidden');
+    await getUserLocation();
+    await seedIfEmpty();
+    navigate(isGovt ? 'complaints' : 'feed');
+  }
+  // Close auth modal on backdrop click
+  document.getElementById('auth-modal').addEventListener('click',e=>{
+    if(e.target===document.getElementById('auth-modal')) {
+      if (currentUser) closeAuthModal();
+    }
+  });
+});
+</script>
+</body>
+</html>
